@@ -255,7 +255,7 @@
       ].join('\n');
 
       say('Your email app is opening with your message ready. Please review it and press Send.', false);
-      window.location.href = 'mailto:fhgm_1@yahoo.com?subject=' +
+      window.location.href = 'mailto:info@hisgraceministries.co.za?subject=' +
         encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
     });
   }

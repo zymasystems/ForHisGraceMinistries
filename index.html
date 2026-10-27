@@ -95,6 +95,12 @@
               <a href="gallery.html" data-page="gallery">Gallery</a>
             </li>
             <li>
+              <a href="events.html" data-page="events">Events</a>
+            </li>
+            <li>
+              <a href="blog.html" data-page="blog">Blog</a>
+            </li>
+            <li>
               <a href="#stories">Testimonials</a>
             </li>
             <li>
@@ -105,6 +111,21 @@
         <button class="menu-btn" id="menuBtn" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="nav"><span></span></button>
       </div>
     </header>
+    <dialog class="announce-popup" id="announcePopup" aria-label="Announcement">
+      <div class="announce-popup-content">
+        <div class="announce-popup-head">
+          <h3 id="popupTitle">Announcement</h3>
+          <div class="announce-popup-meta" id="popupMeta">Today</div>
+        </div>
+        <div class="announce-popup-body" id="popupBody">
+          <p>There are no new announcements at this time. Check back soon for updates from For His Grace Ministries.</p>
+        </div>
+        <div class="announce-popup-actions">
+          <button class="announce-popup-close" id="popupClose" type="button">Close</button>
+        </div>
+      </div>
+    </dialog>
+    <button class="announce-trigger" id="announceTrigger" type="button" aria-label="View announcement" hidden>!</button>
     <main id="main">
       <!-- HERO: your photo with one flat tint (change --hero-tint in styles.css). -->
       <section class="hero" id="top">

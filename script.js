@@ -285,4 +285,67 @@
       revealObserver.observe(item);
     });
   }
+
+  /* ===== Popup announcements ============================================ */
+  var announcePopup = document.getElementById('announcePopup');
+  var announceTrigger = document.getElementById('announceTrigger');
+  var popupClose = document.getElementById('popupClose');
+
+  function openAnnouncement() {
+    if (announcePopup) announcePopup.showModal();
+    if (announceTrigger) announceTrigger.setAttribute('hidden', '');
+  }
+
+  function closeAnnouncement() {
+    if (announcePopup) announcePopup.close();
+  }
+
+  if (announceTrigger && announcePopup) {
+    announceTrigger.addEventListener('click', openAnnouncement);
+  }
+  if (popupClose && announcePopup) {
+    popupClose.addEventListener('click', closeAnnouncement);
+  }
+  if (announcePopup) {
+    announcePopup.addEventListener('click', function (event) {
+      if (event.target === announcePopup) closeAnnouncement();
+    });
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape' && announcePopup.open) closeAnnouncement();
+    });
+  }
+
+  /* ===== Admin-ready data hooks ========================================= */
+  document.querySelectorAll('[data-admin-ready]').forEach(function (el) {
+    el.addEventListener('click', function () {
+      var type = el.dataset.adminLabel || 'item';
+      var id = el.dataset.eventId || el.dataset.postId || el.dataset.galleryId;
+      console.log('[Admin] ' + type + ' #' + id + ' clicked — ready for admin panel integration.');
+    });
+  });
+
+  /* ===== Event filtering (events page) ================================== */
+  var eventFilters = document.getElementById('eventFilters');
+  var eventsGrid = document.getElementById('eventsGrid');
+
+  if (eventFilters && eventsGrid) {
+    var chips = eventFilters.querySelectorAll('[data-filter]');
+    var cards = eventsGrid.querySelectorAll('.event-card');
+
+    chips.forEach(function (chip) {
+      chip.addEventListener('click', function () {
+        var filter = chip.dataset.filter;
+
+        chips.forEach(function (c) {
+          c.classList.toggle('active', c.dataset.filter === filter);
+        });
+
+        cards.forEach(function (card) {
+          var cat = card.dataset.cat || '';
+          var show = filter === 'all' || cat.indexOf(filter) !== -1;
+          card.style.display = show ? '' : 'none';
+        });
+      });
+    });
+  }
 })();

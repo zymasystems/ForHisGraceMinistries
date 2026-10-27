@@ -55,7 +55,13 @@
               <a href="giving.html" data-page="giving">Give &amp; Support</a>
             </li>
             <li>
-              <a href="gallery.html" data-page="gallery">Gallery</a>
+              <a href="gallery.html" data-page="gallery" aria-current="page">Gallery</a>
+            </li>
+            <li>
+              <a href="events.html" data-page="events">Events</a>
+            </li>
+            <li>
+              <a href="blog.html" data-page="blog">Blog</a>
             </li>
             <li>
               <a href="index.html#stories">Testimonials</a>
@@ -95,19 +101,19 @@
             <p class="gallery-status" id="galleryStatus" role="status" aria-live="polite"></p>
           </div>
           <div class="g-grid" id="galGrid">
-            <button class="img g g-1 gallery-photo" type="button" aria-label="View photo: The leadership team of For His Grace Ministries" data-cat="leadership" data-event="Church Leadership" data-search="leadership team church leaders" data-file="images/Church leadership.jpeg">
+            <button class="img g g-1 gallery-photo admin-slot" type="button" aria-label="View photo: The leadership team of For His Grace Ministries" data-cat="leadership" data-event="Church Leadership" data-search="leadership team church leaders" data-file="images/Church leadership.jpeg" data-admin-ready data-admin-label="gallery" data-gallery-id="1">
               <img src="images/Church%20leadership.jpeg" alt="The leadership team of For His Grace Ministries" loading="lazy">
             </button>
-            <button class="img g g-2 gallery-photo" type="button" aria-label="View photo: Senior Pastor Khumalo" data-cat="leadership" data-event="Church Leadership" data-search="senior pastor khumalo" data-file="images/Senior Pastor Khumalo.jpeg">
+            <button class="img g g-2 gallery-photo admin-slot" type="button" aria-label="View photo: Senior Pastor Khumalo" data-cat="leadership" data-event="Church Leadership" data-search="senior pastor khumalo" data-file="images/Senior Pastor Khumalo.jpeg" data-admin-ready data-admin-label="gallery" data-gallery-id="2">
               <img src="images/Senior%20Pastor%20Khumalo.jpeg" alt="Senior Pastor Khumalo" loading="lazy">
             </button>
-            <button class="img g g-3 gallery-photo" type="button" aria-label="View photo: Pastor Mofokeng" data-cat="leadership" data-event="Church Leadership" data-search="pastor mofokeng" data-file="images/Pastor Mofokeng.jpeg">
+            <button class="img g g-3 gallery-photo admin-slot" type="button" aria-label="View photo: Pastor Mofokeng" data-cat="leadership" data-event="Church Leadership" data-search="pastor mofokeng" data-file="images/Pastor Mofokeng.jpeg" data-admin-ready data-admin-label="gallery" data-gallery-id="3">
               <img src="images/Pastor%20Mofokeng.jpeg" alt="Pastor Mofokeng" loading="lazy">
             </button>
-            <button class="img g g-4 gallery-photo" type="button" aria-label="View photo: Overseer Nomsa Khumalo and Senior Pastor Khumalo" data-cat="leadership" data-event="Church Leadership" data-search="overseer nomsa khumalo senior pastor khumalo" data-file="images/Overseer Nomsa Khumalo and Senior Pastor Khumalo.jpeg">
+            <button class="img g g-4 gallery-photo admin-slot" type="button" aria-label="View photo: Overseer Nomsa Khumalo and Senior Pastor Khumalo" data-cat="leadership" data-event="Church Leadership" data-search="overseer nomsa khumalo senior pastor khumalo" data-file="images/Overseer Nomsa Khumalo and Senior Pastor Khumalo.jpeg" data-admin-ready data-admin-label="gallery" data-gallery-id="4">
               <img src="images/Overseer%20Nomsa%20Khumalo%20and%20Senior%20Pastor%20Khumalo.jpeg" alt="Overseer Nomsa Khumalo and Senior Pastor Khumalo" loading="lazy">
             </button>
-            <button class="img g g-5 gallery-photo" type="button" aria-label="View photo: Deacon Zuma" data-cat="leadership" data-event="Church Leadership" data-search="deacon zuma" data-file="images/Deacon Zuma.png">
+            <button class="img g g-5 gallery-photo admin-slot" type="button" aria-label="View photo: Deacon Zuma" data-cat="leadership" data-event="Church Leadership" data-search="deacon zuma" data-file="images/Deacon Zuma.png" data-admin-ready data-admin-label="gallery" data-gallery-id="5">
               <img src="images/Deacon%20Zuma.png" alt="Deacon Zuma" loading="lazy">
             </button>
           </div>
@@ -120,8 +126,23 @@
           <figcaption id="galleryViewerCaption"></figcaption>
         </figure>
       </dialog>
-    </main>
-    <footer class="foot">
+    <dialog class="announce-popup" id="announcePopup" aria-label="Announcement">
+      <div class="announce-popup-content">
+        <div class="announce-popup-head">
+          <h3 id="popupTitle">Announcement</h3>
+          <div class="announce-popup-meta" id="popupMeta">Today</div>
+        </div>
+        <div class="announce-popup-body" id="popupBody">
+          <p>There are no new announcements at this time. Check back soon for updates from For His Grace Ministries.</p>
+        </div>
+        <div class="announce-popup-actions">
+          <button class="announce-popup-close" id="popupClose" type="button">Close</button>
+        </div>
+      </div>
+    </dialog>
+    <button class="announce-trigger" id="announceTrigger" type="button" aria-label="View announcement" hidden>!</button>
+    <main id="main">
+      <section class="section" aria-labelledby="galleryHeading">
       <div class="wrap">
         <div class="f-grid">
           <div class="f-brand">

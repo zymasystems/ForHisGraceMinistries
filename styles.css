@@ -2527,7 +2527,6 @@ textarea {
   color: var(--muted);
   font-size: 13px;
 }
-.img.admin-slot::before,
 .event-card.admin-slot::before,
 .post-card.admin-slot::before {
   content: "Admin upload slot";

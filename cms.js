@@ -54,6 +54,7 @@
   function blogCard(item) {
     var node = element('article', null, 'post-card');
     var body = element('div', null, 'post-body');
+    var featured = image(item.featuredImageUrl, item.title); if (featured) node.append(featured);
     body.append(element('p', item.category, 'post-tags'), element('h2', item.title, 'post-title'),
       element('p', item.excerpt, 'post-excerpt'), element('p', [item.author, date(item.publishedAt)].filter(Boolean).join(' · '), 'post-meta'),
       link('Read more →', 'blog-post.html?slug=' + encodeURIComponent(item.slug), 'post-read'));
@@ -63,11 +64,36 @@
   function eventCard(item) {
     var node = element('article', null, 'event-card');
     var body = element('div', null, 'event-body');
+    var featured = image(item.featuredImageUrl, item.title); if (featured) node.append(featured);
     node.dataset.endsAt = item.endsAt;
     body.append(element('h2', item.title, 'event-title'), element('p', eventTime(item.startsAt) + ' – ' + eventTime(item.endsAt), 'event-meta'),
       element('p', item.location, 'event-meta'), element('p', item.description, 'event-excerpt cms-copy'));
+    var calendar = element('button', 'Add to calendar', 'btn btn-outline'); calendar.type = 'button';
+    calendar.addEventListener('click', function () { downloadCalendar(item); }); body.append(calendar);
     node.append(body);
     return node;
+  }
+  function downloadCalendar(item) {
+    function escape(value) { return String(value || '').replace(/\\/g, '\\\\').replace(/\r?\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;'); }
+    function stamp(value) { return new Date(value).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, ''); }
+    var lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//FHGM//Church Events//EN', 'BEGIN:VEVENT',
+      'UID:' + escape(item.slug) + '@hisgraceministries.co.za', 'DTSTAMP:' + stamp(new Date()),
+      'DTSTART:' + stamp(item.startsAt), 'DTEND:' + stamp(item.endsAt), 'SUMMARY:' + escape(item.title),
+      'DESCRIPTION:' + escape(item.description), 'LOCATION:' + escape(item.location), 'END:VEVENT', 'END:VCALENDAR'];
+    // Fold by UTF-8 octets, without splitting multibyte characters (RFC 5545).
+    var encoder = new TextEncoder();
+    var folded = lines.map(function (line) {
+      var parts = [], part = '', size = 0;
+      for (var char of line) {
+        var length = encoder.encode(char).length;
+        if (size + length > 73) { parts.push(part); part = ' '; size = 1; }
+        part += char; size += length;
+      }
+      parts.push(part); return parts.join('\r\n');
+    }).join('\r\n') + '\r\n';
+    var url = URL.createObjectURL(new Blob([folded], {type:'text/calendar;charset=utf-8'}));
+    var a = link('', url); a.download = 'church-event.ics'; document.body.append(a); a.click(); a.remove();
+    window.setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
   }
   function albumCard(item) {
     var node = link('', 'gallery.html?album=' + encodeURIComponent(item.slug), 'cms-card cms-album');
@@ -99,8 +125,11 @@
       document.title = (data.seoTitle || data.title) + ' | For His Grace Ministries';
       document.querySelector('meta[name="description"]').content = data.seoDescription || data.excerpt || '';
       document.querySelector('link[rel="canonical"]').href = window.location.origin + '/blog-post.html?slug=' + encodeURIComponent(slug);
+      var articleBody = element('div', null, 'cms-copy');
+      if (window.FhgmContent) FhgmContent.render(articleBody, data.content, data.contentFormat); else articleBody.textContent = data.content || '';
+      var featured = image(data.featuredImageUrl, data.title); if (featured) content.append(featured);
       content.append(element('p', [data.author, date(data.publishedAt)].filter(Boolean).join(' · '), 'cms-meta'),
-        element('div', data.content, 'cms-copy'), link('← All articles', 'blog.html', 'link-gold'));
+        articleBody, link('← All articles', 'blog.html', 'link-gold'));
       status.textContent = '';
       return;
     }
@@ -166,3 +195,4 @@
     });
   }, 1000);
 })();
+

@@ -1,0 +1,11 @@
+.cms-pagination { display:flex; gap:1rem; align-items:center; flex-wrap:wrap; margin:2rem 0; }
+.cms-card { min-width:0; padding:1.5rem; border:1px solid var(--gold, #ad9058); border-radius:12px; }
+.cms-card h2 { margin:.5rem 0; }
+.cms-card p, .cms-article { overflow-wrap:anywhere; }
+.cms-copy { white-space:pre-wrap; }
+.cms-meta { opacity:.8; margin:.6rem 0; }
+.cms-photo { width:100%; aspect-ratio:4/3; object-fit:cover; border-radius:8px; }
+.cms-album { color:inherit; text-decoration:none; display:block; }
+#cmsContent.g-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr)); }
+.cms-article { max-width:800px; margin:auto; line-height:1.8; }
+#cmsStatus { margin:1rem 0; }

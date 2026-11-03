@@ -3,13 +3,13 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Upcoming Events | For His Grace Ministries</title>
-    <meta name="description" content="Gather with us for worship, prayer and fellowship. Times are shown in South African time.">
+    <title>Events | For His Grace Ministries</title>
+    <meta name="description" content="Upcoming services, youth gatherings, prayer meetings and community events at For His Grace Ministries in Ratanda.">
     <link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32.png">
     <link rel="icon" type="image/png" sizes="192x192" href="images/favicon-192.png">
     <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
-    <meta property="og:title" content="Upcoming Events | For His Grace Ministries">
-    <meta property="og:description" content="Gather with us for worship, prayer and fellowship.">
+    <meta property="og:title" content="Events | For His Grace Ministries">
+    <meta property="og:description" content="See what is coming up at For His Grace Ministries — services, youth gatherings, prayer meetings and community outreach in Ratanda.">
     <meta property="og:image" content="https://hisgraceministries.co.za/images/og-image.jpg">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
@@ -17,8 +17,8 @@
     <meta property="og:url" content="https://hisgraceministries.co.za/events.html">
     <meta property="og:type" content="website">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Upcoming Events | For His Grace Ministries">
-    <meta name="twitter:description" content="Gather with us for worship, prayer and fellowship.">
+    <meta name="twitter:title" content="Events | For His Grace Ministries">
+    <meta name="twitter:description" content="See what is coming up at For His Grace Ministries.">
     <meta name="twitter:image" content="https://hisgraceministries.co.za/images/og-image.jpg">
     <link rel="canonical" href="https://hisgraceministries.co.za/events.html">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -77,12 +77,114 @@
     </dialog>
     <button class="announce-trigger" id="announceTrigger" type="button" aria-label="View announcement" hidden>!</button>
     <main id="main" data-cms="events">
-      <section class="section"><div class="wrap">
-        <header class="sec-head"><h1 id="cmsTitle">Upcoming Events</h1><p id="cmsDescription">Gather with us for worship, prayer and fellowship. Times are shown in South African time.</p></header>
+      <section class="section" aria-labelledby="eventsHeading">
+        <div class="wrap">
+          <div class="ev-head">
+            <h1 id="eventsHeading">Upcoming Events</h1>
+            <p>Join us for worship, fellowship, prayer and community gatherings. All are welcome.</p>
+          </div>
+          <div class="ev-filter" id="eventFilters">
+            <button type="button" class="chip-tag" data-filter="all">All</button>
+            <button type="button" class="chip-tag" data-filter="service">Service</button>
+            <button type="button" class="chip-tag" data-filter="prayer">Prayer</button>
+            <button type="button" class="chip-tag" data-filter="youth">Youth</button>
+            <button type="button" class="chip-tag" data-filter="outreach">Outreach</button>
+          </div>
+          <div class="ev-grid" id="eventsGrid">
+            <!-- Admin uploads events here. Each card gets data-event-id for the admin panel. -->
+            <article class="event-card admin-slot" data-admin-ready data-admin-label="event" data-event-id="1" data-cat="service" hidden>
+              <div class="event-img">
+                <div class="placeholder">Event photo</div>
+              </div>
+              <div class="event-date">
+                <span class="day">15</span>
+                <span class="mar">Mar</span>
+              </div>
+              <div class="event-body">
+                <h2 class="event-title">Sunday Main Service</h2>
+                <div class="event-meta">
+                  <span><svg width="16" height="16"><use href="icons.svg#i-calendar"/></svg>10:30 AM</span>
+                  <span><svg width="16" height="16"><use href="icons.svg#i-pin"/></svg>Sanctuary</span>
+                </div>
+                <p class="event-excerpt">Weekly main service with worship, prayer and the preaching of God&rsquo;s Word.</p>
+                <div class="event-actions">
+                  <button class="btn btn-primary" type="button">Add to Calendar</button>
+                </div>
+              </div>
+            </article>
+            <article class="event-card admin-slot" data-admin-ready data-admin-label="event" data-event-id="2" data-cat="prayer" hidden>
+              <div class="event-img">
+                <div class="placeholder">Event photo</div>
+              </div>
+              <div class="event-date">
+                <span class="day">18</span>
+                <span class="mar">Mar</span>
+              </div>
+              <div class="event-body">
+                <h2 class="event-title">Wednesday Prayer Meeting</h2>
+                <div class="event-meta">
+                  <span><svg width="16" height="16"><use href="icons.svg#i-calendar"/></svg>6:00 PM</span>
+                  <span><svg width="16" height="16"><use href="icons.svg#i-pin"/></svg>Prayer Room</span>
+                </div>
+                <p class="event-excerpt">Mid-week intercession and prayer for the church, community and nations.</p>
+                <div class="event-actions">
+                  <button class="btn btn-primary" type="button">Add to Calendar</button>
+                </div>
+              </div>
+            </article>
+            <article class="event-card admin-slot" data-admin-ready data-admin-label="event" data-event-id="3" data-cat="youth" hidden>
+              <div class="event-img">
+                <div class="placeholder">Event photo</div>
+              </div>
+              <div class="event-date">
+                <span class="day">22</span>
+
+                <span class="mar">Mar</span>
+              </div>
+              <div class="event-body">
+                <h2 class="event-title">Youth Service</h2>
+                <div class="event-meta">
+                  <span><svg width="16" height="16"><use href="icons.svg#i-calendar"/></svg>9:00 AM</span>
+                  <span><svg width="16" height="16"><use href="icons.svg#i-pin"/></svg>Youth Hall</span>
+                </div>
+                <p class="event-excerpt">A service dedicated to our young people — worship, teaching and fellowship.</p>
+                <div class="event-actions">
+                  <button class="btn btn-primary" type="button">Add to Calendar</button>
+                </div>
+              </div>
+            </article>
+            <article class="event-card admin-slot" data-admin-ready data-admin-label="event" data-event-id="4" data-cat="outreach" hidden>
+              <div class="event-img">
+                <div class="placeholder">Event photo</div>
+              </div>
+              <div class="event-date">
+                <span class="day">29</span>
+                <span class="mar">Mar</span>
+              </div>
+              <div class="event-body">
+                <h2 class="event-title">Community Outreach</h2>
+                <div class="event-meta">
+                  <span><svg width="16" height="16"><use href="icons.svg#i-calendar"/></svg>10:00 AM</span>
+                  <span><svg width="16" height="16"><use href="icons.svg#i-pin"/></svg>Ratanda EX 23</span>
+                </div>
+                <p class="event-excerpt">Reaching out to the community with food parcels, prayer and the love of Christ.</p>
+                <div class="event-actions">
+                  <button class="btn btn-primary" type="button">Add to Calendar</button>
+                </div>
+              </div>
+            </article>
+          </div>
+          <p class="muted small" style="margin-top:24px;text-align:center;">
+            Events are managed by the admin team. New events appear here as they are uploaded.
+          </p>
+        </div>
+      </section>
+      <section class="section" aria-labelledby="cmsTitle"><div class="wrap">
+        <header class="sec-head"><h2 id="cmsTitle">Published events</h2><p id="cmsDescription"></p></header>
         <p id="cmsStatus" role="status" aria-live="polite">Loading content…</p>
         <div id="cmsContent" class="ev-grid"></div>
         <nav id="cmsPagination" class="cms-pagination" aria-label="Content pages"></nav>
-        <noscript><p>Please enable JavaScript to view published church content.</p></noscript>
+        <noscript><p>Enable JavaScript to load the latest published content. Existing content is shown above.</p></noscript>
       </div></section>
     </main>
     <footer class="foot">

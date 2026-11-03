@@ -18,6 +18,19 @@ const assert = require('node:assert/strict');
     assert.equal(await page.locator('main').count(), 1);
     assert.equal(await page.locator('footer').count(), 1);
     assert.equal(await page.locator('script[src="script.js"]').count(), 1);
+    if (path.startsWith('blog.html')) {
+      assert.equal(await page.locator('#blogGrid .post-card').count(), 3);
+      assert.match(await page.locator('#blogGrid').textContent(), /Walking in His Purpose Together/);
+    }
+    if (path.startsWith('events.html')) {
+      assert.equal(await page.locator('#eventsGrid .event-card').count(), 4);
+      assert.equal(await page.locator('#eventFilters').count(), 1);
+    }
+    if (path.startsWith('gallery.html')) {
+      assert.equal(await page.locator('#galGrid .gallery-photo').count(), 5);
+      assert.equal(await page.locator('#gallerySearch').count(), 1);
+      assert.equal(await page.locator('#galleryViewer').count(), 1);
+    }
   }
   await visit('blog.html', {total:13, items:[{title:'<img src=x onerror=alert(1)>', slug:'faith & hope', excerpt:'Welcome', author:'Staff', publishedAt:'2026-11-01T12:00:00Z'}]});
   assert.equal(await page.locator('#cmsContent img').count(), 0);
@@ -36,6 +49,10 @@ const assert = require('node:assert/strict');
   assert.match(await page.locator('#cmsPagination').textContent(), /Previous/);
   await visit('blog.html', {total:0,items:[]});
   assert.match(await page.locator('#cmsStatus').textContent(), /No published content/);
+  await page.locator('[data-existing-post]').first().click();
+  assert.equal(await page.locator('#existingPostPreview').evaluate(node => node.open), true);
+  assert.match(await page.locator('#existingPostExcerpt').textContent(), /grow in grace/);
+  await page.locator('#existingPostClose').click();
   responseStatus = 503;
   await visit('blog.html', {});
   assert.match(await page.locator('#cmsStatus').textContent(), /could not load/);
@@ -50,6 +67,10 @@ const assert = require('node:assert/strict');
   responseStatus = 200;
   await visit('gallery.html', {total:0,items:[]});
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await page.locator('#gallerySearch').fill('Deacon');
+  assert.equal(await page.locator('#galGrid .gallery-photo:not([hidden])').count(), 1);
+  await page.locator('#galGrid .gallery-photo:not([hidden])').click();
+  assert.equal(await page.locator('#galleryViewer').evaluate(node => node.open), true);
   await browser.close();
   console.log('PASS: published feeds, article detail, pagination, SAST dates, safe text rendering, gallery links, errors/retry, missing content, mobile width and page structure');
 })().catch(error => { console.error(error); process.exit(1); });

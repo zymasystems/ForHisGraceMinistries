@@ -2527,11 +2527,3 @@ textarea {
   color: var(--muted);
   font-size: 13px;
 }
-.event-card.admin-slot::before,
-.post-card.admin-slot::before {
-  content: "Admin upload slot";
-  display: block;
-  margin-bottom: 6px;
-  font-weight: 600;
-  color: var(--gold);
-}

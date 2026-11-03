@@ -52,17 +52,21 @@
   }
   function card() { return element('article', null, 'cms-card'); }
   function blogCard(item) {
-    var node = card();
-    node.append(element('p', item.category, 'cms-meta'), element('h2', item.title),
-      element('p', item.excerpt), element('p', [item.author, date(item.publishedAt)].filter(Boolean).join(' · '), 'cms-meta'),
-      link('Read more →', 'blog-post.html?slug=' + encodeURIComponent(item.slug), 'link-gold'));
+    var node = element('article', null, 'post-card');
+    var body = element('div', null, 'post-body');
+    body.append(element('p', item.category, 'post-tags'), element('h2', item.title, 'post-title'),
+      element('p', item.excerpt, 'post-excerpt'), element('p', [item.author, date(item.publishedAt)].filter(Boolean).join(' · '), 'post-meta'),
+      link('Read more →', 'blog-post.html?slug=' + encodeURIComponent(item.slug), 'post-read'));
+    node.append(body);
     return node;
   }
   function eventCard(item) {
-    var node = card();
+    var node = element('article', null, 'event-card');
+    var body = element('div', null, 'event-body');
     node.dataset.endsAt = item.endsAt;
-    node.append(element('h2', item.title), element('p', eventTime(item.startsAt) + ' – ' + eventTime(item.endsAt), 'cms-meta'),
-      element('p', item.location), element('p', item.description, 'cms-copy'));
+    body.append(element('h2', item.title, 'event-title'), element('p', eventTime(item.startsAt) + ' – ' + eventTime(item.endsAt), 'event-meta'),
+      element('p', item.location, 'event-meta'), element('p', item.description, 'event-excerpt cms-copy'));
+    node.append(body);
     return node;
   }
   function albumCard(item) {
@@ -140,6 +144,19 @@
       if (kind === 'post') pagination.append(link('← All articles', 'blog.html'));
       if (kind === 'gallery' && album) pagination.append(link('← All albums', 'gallery.html'));
     } finally { window.clearTimeout(timer); }
+  }
+  var preview = document.getElementById('existingPostPreview');
+  if (preview) {
+    document.querySelectorAll('[data-existing-post]').forEach(function (trigger) {
+      trigger.addEventListener('click', function (event) {
+        event.preventDefault();
+        var post = trigger.closest('.post-card');
+        document.getElementById('existingPostTitle').textContent = post.querySelector('.post-title').textContent;
+        document.getElementById('existingPostExcerpt').textContent = post.querySelector('.post-excerpt').textContent;
+        preview.showModal();
+      });
+    });
+    document.getElementById('existingPostClose').addEventListener('click', function () { preview.close(); });
   }
   load();
   // Remove events that end while the visitor keeps the page open.

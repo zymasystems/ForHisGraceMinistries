@@ -56,7 +56,7 @@ const assert = require('node:assert/strict');
   assert.match(await page.locator('#cmsStatus').textContent(), /No published content/);
   await page.locator('[data-post-open]').first().click();
   assert.equal(await page.locator('#postDialog').evaluate(node => node.open), true);
-  assert.match(await page.locator('#postDialogArticle').textContent(), /grow in grace/);
+  assert.match(await page.locator('#postDialogArticle').textContent(), /grow as we worship/);
   await page.locator('#postDialog [data-dialog-close]').click();
   responseStatus = 503;
   await visit('blog.html', {});

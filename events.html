@@ -26,6 +26,7 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500&display=swap">
     <script>document.documentElement.classList.add("js")</script>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="cms.css">
   </head>
   <body>
     <a class="skip" href="#main">Skip to content</a>
@@ -75,7 +76,7 @@
       </div>
     </dialog>
     <button class="announce-trigger" id="announceTrigger" type="button" aria-label="View announcement" hidden>!</button>
-    <main id="main">
+    <main id="main" data-cms="events">
       <section class="section" aria-labelledby="eventsHeading">
         <div class="wrap">
           <div class="ev-head">
@@ -188,6 +189,15 @@
           </dialog>
         </div>
       </section>
+      <section class="section bg2" aria-labelledby="cmsTitle">
+        <div class="wrap">
+          <header class="sec-head"><h2 id="cmsTitle">More events</h2><p id="cmsDescription"></p></header>
+          <p id="cmsStatus" role="status" aria-live="polite">Loading content…</p>
+          <div id="cmsContent" class="ev-grid"></div>
+          <nav id="cmsPagination" class="cms-pagination" aria-label="Content pages"></nav>
+          <noscript><p>Enable JavaScript to load the latest published events. Existing events are shown above.</p></noscript>
+        </div>
+      </section>
     </main>
     <footer class="foot">
       <div class="wrap">
@@ -241,5 +251,7 @@
       </div>
     </footer>
     <script src="script.js"></script>
+    <script src="content-renderer.js" defer></script>
+    <script src="cms.js" defer></script>
   </body>
 </html>

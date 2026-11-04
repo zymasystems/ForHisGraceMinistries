@@ -330,12 +330,14 @@
 
   if (eventFilters && eventsGrid) {
     var chips = eventFilters.querySelectorAll('[data-filter]');
-    var cards = eventsGrid.querySelectorAll('.event-card');
     var eventsEmpty = document.getElementById('eventsEmpty');
 
     function updateEventsEmptyState() {
       if (!eventsEmpty) return;
 
+      var cards = document.querySelectorAll(
+        '#eventsGrid .event-card, #cmsContent .event-card'
+      );
       var hasVisibleEvent = Array.from(cards).some(function (card) {
         return !card.hidden && card.style.display !== 'none';
       });
@@ -357,9 +359,11 @@
           c.setAttribute('aria-pressed', String(c.dataset.filter === filter));
         });
 
-        cards.forEach(function (card) {
+        document.querySelectorAll(
+          '#eventsGrid .event-card, #cmsContent .event-card'
+        ).forEach(function (card) {
           var cat = card.dataset.cat || '';
-          var show = filter === 'all' || cat.indexOf(filter) !== -1;
+          var show = filter === 'all' || cat.toLowerCase().indexOf(filter) !== -1;
           card.style.display = show ? '' : 'none';
         });
 
@@ -400,7 +404,7 @@
   ) {
     bindContentDialog(eventDialog);
 
-    eventsGrid.addEventListener('click', function (event) {
+    document.addEventListener('click', function (event) {
       var trigger = event.target.closest('[data-event-open]');
       var card = trigger && trigger.closest('.event-card');
 

@@ -99,8 +99,13 @@
                     <span><svg width="16" height="16"><use href="icons.svg#i-calendar"/></svg>14 Mar 2026</span>
                     <span><svg width="16" height="16"><use href="icons.svg#i-user"/></svg>Apostle Nathi Khumalo</span>
                   </div>
-                  <a class="post-read" href="blog-post.html">Read more <span aria-hidden="true">→</span></a>
+                  <button class="post-read" type="button" data-post-open>Read article <span aria-hidden="true">→</span></button>
                 </div>
+                <template class="post-full-content">
+                  <p>Walking in God&rsquo;s purpose is not something we do alone. We grow as we worship, pray and serve alongside one another, making room for every person to use the gifts God has given them.</p>
+                  <p>Grace meets us in every season of that journey. It teaches us to encourage one another, to keep trusting God when the way ahead is unclear and to celebrate the ways He is at work in our community.</p>
+                  <p>As a church family, may we continue to grow in faith and walk in His purpose together.</p>
+                </template>
               </div>
             </article>
             <article class="post-card admin-slot" data-admin-ready data-admin-label="post" data-post-id="2">
@@ -119,8 +124,13 @@
                     <span><svg width="16" height="16"><use href="icons.svg#i-calendar"/></svg>28 Feb 2026</span>
                     <span><svg width="16" height="16"><use href="icons.svg#i-user"/></svg>Leadership Team</span>
                   </div>
-                  <a class="post-read" href="blog-post.html">Read more <span aria-hidden="true">→</span></a>
+                  <button class="post-read" type="button" data-post-open>Read article <span aria-hidden="true">→</span></button>
                 </div>
+                <template class="post-full-content">
+                  <p>For His Grace Ministries began in 2021 with a desire to share the hope of Christ in Ratanda. From the beginning, the heart has been to build a Christ-centred community where people can worship, grow in faith and find encouragement.</p>
+                  <p>That story continues through Sunday services, prayer, fellowship and the everyday ways our church family cares for one another. Each gathering is an opportunity to learn from God&rsquo;s Word and to put faith into practice.</p>
+                  <p>We are grateful for everyone who has been part of the journey so far, and we look forward to what God will continue to do in the years ahead.</p>
+                </template>
               </div>
             </article>
             <article class="post-card admin-slot" data-admin-ready data-admin-label="post" data-post-id="3">
@@ -139,11 +149,26 @@
                     <span><svg width="16" height="16"><use href="icons.svg#i-calendar"/></svg>10 Feb 2026</span>
                     <span><svg width="16" height="16"><use href="icons.svg#i-user"/></svg>Prayer Ministry</span>
                   </div>
-                  <a class="post-read" href="blog-post.html">Read more <span aria-hidden="true">→</span></a>
+                  <button class="post-read" type="button" data-post-open>Read article <span aria-hidden="true">→</span></button>
                 </div>
+                <template class="post-full-content">
+                  <p>Prayer is one of the ways we bring our hopes, concerns and gratitude before God. When we gather to pray, we also make space to listen, to encourage one another and to remember that no one in the community has to carry a burden alone.</p>
+                  <p>Our Wednesday prayer meeting is a dedicated time to intercede for the church, our neighbours and the wider world. Every voice and every prayer matters, whether spoken aloud or held quietly in the heart.</p>
+                  <p>We invite you to join us as we stand together in faith and seek God&rsquo;s guidance for our community.</p>
+                </template>
               </div>
             </article>
           </div>
+          <dialog class="content-dialog post-dialog" id="postDialog" aria-labelledby="postDialogTitle">
+            <button class="content-dialog-close" type="button" data-dialog-close aria-label="Close article">×</button>
+            <div class="content-dialog-image" id="postDialogImage" hidden></div>
+            <div class="content-dialog-body">
+              <p class="eyebrow">From the Heart</p>
+              <h2 id="postDialogTitle"></h2>
+              <div class="content-dialog-meta" id="postDialogMeta"></div>
+              <div class="content-dialog-article" id="postDialogArticle"></div>
+            </div>
+          </dialog>
           <p class="muted small" style="margin-top:24px;text-align:center;">
             Blog posts are managed by the admin team. New posts appear here as they are uploaded.
           </p>

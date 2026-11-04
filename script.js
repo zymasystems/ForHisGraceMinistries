@@ -331,13 +331,30 @@
   if (eventFilters && eventsGrid) {
     var chips = eventFilters.querySelectorAll('[data-filter]');
     var cards = eventsGrid.querySelectorAll('.event-card');
+    var eventsEmpty = document.getElementById('eventsEmpty');
+
+    function updateEventsEmptyState() {
+      if (!eventsEmpty) return;
+
+      var hasVisibleEvent = Array.from(cards).some(function (card) {
+        return !card.hidden && card.style.display !== 'none';
+      });
+
+      eventsEmpty.hidden = hasVisibleEvent;
+    }
+
+    updateEventsEmptyState();
 
     chips.forEach(function (chip) {
+      var selected = chip.dataset.filter === 'all';
+      chip.classList.toggle('active', selected);
+      chip.setAttribute('aria-pressed', String(selected));
       chip.addEventListener('click', function () {
         var filter = chip.dataset.filter;
 
         chips.forEach(function (c) {
           c.classList.toggle('active', c.dataset.filter === filter);
+          c.setAttribute('aria-pressed', String(c.dataset.filter === filter));
         });
 
         cards.forEach(function (card) {
@@ -345,7 +362,163 @@
           var show = filter === 'all' || cat.indexOf(filter) !== -1;
           card.style.display = show ? '' : 'none';
         });
+
+        updateEventsEmptyState();
       });
+    });
+  }
+
+  function bindContentDialog(dialog) {
+    if (!dialog) return;
+
+    var closeButton = dialog.querySelector('[data-dialog-close]');
+    if (closeButton) {
+      closeButton.addEventListener('click', function () {
+        dialog.close();
+      });
+    }
+
+    dialog.addEventListener('click', function (event) {
+      if (event.target === dialog) dialog.close();
+    });
+  }
+
+  var eventDialog = document.getElementById('eventDialog');
+  var eventDialogTitle = document.getElementById('eventDialogTitle');
+  var eventDialogMeta = document.getElementById('eventDialogMeta');
+  var eventDialogDescription = document.getElementById('eventDialogDescription');
+  var eventDialogImage = document.getElementById('eventDialogImage');
+  var lastEventTrigger = null;
+
+  if (
+    eventsGrid &&
+    eventDialog &&
+    eventDialogTitle &&
+    eventDialogMeta &&
+    eventDialogDescription &&
+    eventDialogImage
+  ) {
+    bindContentDialog(eventDialog);
+
+    eventsGrid.addEventListener('click', function (event) {
+      var trigger = event.target.closest('[data-event-open]');
+      var card = trigger && trigger.closest('.event-card');
+
+      if (!card) return;
+
+      var title = card.querySelector('.event-title');
+      var date = card.querySelector('.event-date');
+      var details = Array.from(card.querySelectorAll('.event-meta span'));
+      var description = card.querySelector('.event-description') ||
+        card.querySelector('.event-excerpt');
+      var image = card.querySelector('.event-img img');
+
+      eventDialogTitle.textContent = title ? title.textContent.trim() : 'Event details';
+      eventDialogMeta.replaceChildren();
+
+      if (date) {
+        var dateText = document.createElement('span');
+        dateText.textContent = date.textContent.trim().replace(/\s+/g, ' ');
+        eventDialogMeta.appendChild(dateText);
+      }
+
+      details.forEach(function (detail) {
+        var item = document.createElement('span');
+        item.textContent = detail.textContent.trim();
+        eventDialogMeta.appendChild(item);
+      });
+
+      eventDialogDescription.textContent = description
+        ? description.textContent.trim()
+        : '';
+      eventDialogImage.replaceChildren();
+      eventDialogImage.hidden = !image;
+
+      if (image) {
+        var eventImage = image.cloneNode();
+        eventImage.removeAttribute('loading');
+        eventDialogImage.appendChild(eventImage);
+      }
+
+      lastEventTrigger = trigger;
+      eventDialog.showModal();
+    });
+
+    eventDialog.addEventListener('close', function () {
+      if (lastEventTrigger) {
+        lastEventTrigger.focus();
+        lastEventTrigger = null;
+      }
+    });
+  }
+
+  var blogGrid = document.getElementById('blogGrid');
+  var postDialog = document.getElementById('postDialog');
+  var postDialogTitle = document.getElementById('postDialogTitle');
+  var postDialogMeta = document.getElementById('postDialogMeta');
+  var postDialogArticle = document.getElementById('postDialogArticle');
+  var postDialogImage = document.getElementById('postDialogImage');
+  var lastPostTrigger = null;
+
+  if (
+    blogGrid &&
+    postDialog &&
+    postDialogTitle &&
+    postDialogMeta &&
+    postDialogArticle &&
+    postDialogImage
+  ) {
+    bindContentDialog(postDialog);
+
+    blogGrid.addEventListener('click', function (event) {
+      var trigger = event.target.closest('[data-post-open]');
+      var card = trigger && trigger.closest('.post-card');
+
+      if (!card) return;
+
+      var title = card.querySelector('.post-title');
+      var metadata = card.querySelectorAll('.post-meta span');
+      var tags = card.querySelectorAll('.post-tags .chip-tag');
+      var image = card.querySelector('.post-img img');
+      var article = card.querySelector('.post-full-content');
+      var excerpt = card.querySelector('.post-excerpt');
+
+      postDialogTitle.textContent = title ? title.textContent.trim() : 'Blog article';
+      postDialogMeta.replaceChildren();
+
+      Array.from(tags).concat(Array.from(metadata)).forEach(function (value) {
+        var item = document.createElement('span');
+        item.textContent = value.textContent.trim();
+        postDialogMeta.appendChild(item);
+      });
+
+      postDialogArticle.replaceChildren();
+      if (article) {
+        postDialogArticle.appendChild(article.content.cloneNode(true));
+      } else if (excerpt) {
+        var paragraph = document.createElement('p');
+        paragraph.textContent = excerpt.textContent.trim();
+        postDialogArticle.appendChild(paragraph);
+      }
+
+      postDialogImage.replaceChildren();
+      postDialogImage.hidden = !image;
+
+      if (image) {
+        var postImage = image.cloneNode();
+        postImage.removeAttribute('loading');
+        postDialogImage.appendChild(postImage);
+      }
+
+      lastPostTrigger = trigger;
+      postDialog.showModal();
+    });
+
+    postDialog.addEventListener('close', function () {
+      if (lastPostTrigger) {
+        lastPostTrigger.focus();
+        lastPostTrigger = null;
+      }
     });
   }
 })();

@@ -90,6 +90,7 @@
             <button type="button" class="chip-tag" data-filter="youth">Youth</button>
             <button type="button" class="chip-tag" data-filter="outreach">Outreach</button>
           </div>
+          <p id="cmsStatus" role="status" aria-live="polite">Loading content…</p>
           <div class="ev-grid" id="eventsGrid">
             <!-- Admin uploads events here. Each card gets data-event-id for the admin panel. -->
             <article class="event-card admin-slot" data-admin-ready data-admin-label="event" data-event-id="1" data-cat="service" hidden>
@@ -192,7 +193,6 @@
       <section class="section bg2" aria-labelledby="cmsTitle">
         <div class="wrap">
           <header class="sec-head"><h2 id="cmsTitle">More events</h2><p id="cmsDescription"></p></header>
-          <p id="cmsStatus" role="status" aria-live="polite">Loading content…</p>
           <div id="cmsContent" class="ev-grid"></div>
           <nav id="cmsPagination" class="cms-pagination" aria-label="Content pages"></nav>
           <noscript><p>Enable JavaScript to load the latest published events. Existing events are shown above.</p></noscript>

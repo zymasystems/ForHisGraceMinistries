@@ -12,6 +12,11 @@
   var kind = root.dataset.cms;
   var album = params.get('album');
   var slug = params.get('slug');
+  var recentWindow = 14 * 24 * 60 * 60 * 1000;
+  var blogGrid = document.getElementById('blogGrid');
+  var legacyPosts = kind === 'blog' && blogGrid ? Array.from(blogGrid.children) : [];
+  var transitionTimer;
+  if (kind === 'blog') legacyPosts.forEach(function (item) { content.append(item); });
 
   function element(tag, text, className) {
     var node = document.createElement(tag);
@@ -44,6 +49,41 @@
     return Number.isNaN(d.getTime()) ? '' : new Intl.DateTimeFormat('en-ZA', {
       dateStyle: 'medium', timeZone: 'Africa/Johannesburg'
     }).format(d);
+  }
+  function publishedTime(item) {
+    var value = item.publishedAt || item.createdAt || item.uploadedAt || item.published_at || item.created_at;
+    var timestamp = value ? new Date(value).getTime() : NaN;
+    return Number.isNaN(timestamp) ? null : timestamp;
+  }
+  function isRecent(item, allowMissingTimestamp) {
+    var timestamp = publishedTime(item);
+    return timestamp == null ? allowMissingTimestamp : Date.now() - timestamp < recentWindow;
+  }
+  function scheduleArchive(items, rerender) {
+    window.clearTimeout(transitionTimer);
+    var transitionAt = items.reduce(function (earliest, item) {
+      var timestamp = publishedTime(item);
+      var candidate = timestamp == null ? Infinity : timestamp + recentWindow;
+      return candidate > Date.now() ? Math.min(earliest, candidate) : earliest;
+    }, Infinity);
+    if (Number.isFinite(transitionAt)) {
+      transitionTimer = window.setTimeout(rerender, Math.min(transitionAt - Date.now() + 1, 2147483647));
+    }
+  }
+  function newestFirst(items) {
+    return items.slice().sort(function (a, b) {
+      return (publishedTime(b) || 0) - (publishedTime(a) || 0);
+    });
+  }
+  function uniqueItems(items) {
+    var seen = new Set();
+    return items.filter(function (item) {
+      var key = item.id || item.slug || item.url ||
+        [item.title || '', item.startsAt || item.publishedAt || ''].join('|');
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
   }
   function eventTime(value) {
     return new Intl.DateTimeFormat('en-ZA', {
@@ -149,6 +189,19 @@
     if (item.caption) node.append(element('figcaption', item.caption));
     return node;
   }
+  function galleryPhoto(item, albumItem, index) {
+    var alt = item.altText || item.caption || albumItem.title || 'Church photo';
+    var img = image(item.url, alt);
+    if (!img) return null;
+    var node = element('button', null, 'img g g-' + ((index % 5) + 1) + ' gallery-photo');
+    node.type = 'button';
+    node.setAttribute('aria-label', 'View photo: ' + alt);
+    node.dataset.cat = String(item.category || albumItem.category || 'all').toLowerCase();
+    node.dataset.event = albumItem.title || '';
+    node.dataset.search = [albumItem.title, item.caption, item.altText, item.category].filter(Boolean).join(' ').toLowerCase();
+    node.append(img);
+    return node;
+  }
   function render(data) {
     content.replaceChildren();
     pagination.replaceChildren();
@@ -167,41 +220,119 @@
       return;
     }
     if (!Array.isArray(data.items)) throw new Error('Invalid content response');
+    if (kind === 'blog') {
+      if (!blogGrid) throw new Error('Blog list is unavailable');
+      var articles = newestFirst(uniqueItems(data.items));
+      var recentArticles = articles.filter(function (item) { return isRecent(item, false); });
+      var olderArticles = articles.filter(function (item) { return !isRecent(item, false); });
+      blogGrid.replaceChildren();
+      recentArticles.forEach(function (item) { blogGrid.append(blogCard(item)); });
+      olderArticles.forEach(function (item) { content.append(blogCard(item)); });
+      legacyPosts.forEach(function (item) { content.append(item); });
+      status.textContent = recentArticles.length ? '' : 'No newly published articles in the last two weeks.';
+      scheduleArchive(articles, function () { render({ items: articles }); });
+      return;
+    }
     if (kind === 'events') {
+      var eventItems = newestFirst(uniqueItems(data.items));
+      var recentEvents = eventItems.filter(function (item) { return isRecent(item, true); });
+      var olderEvents = eventItems.filter(function (item) { return !isRecent(item, true); });
+      var upcoming = document.getElementById('eventsGrid');
+      if (!upcoming) throw new Error('Upcoming events list is unavailable');
+      upcoming.replaceChildren();
+      recentEvents.forEach(function (item) { upcoming.append(eventCard(item)); });
+      olderEvents.forEach(function (item) { content.append(eventCard(item)); });
       var emptyState = document.getElementById('eventsEmpty');
-      if (emptyState) emptyState.hidden = data.items.length > 0;
+      if (emptyState) emptyState.hidden = recentEvents.length > 0;
+      status.textContent = recentEvents.length ? '' : 'No recently published events. See More events below.';
+      scheduleArchive(eventItems, function () { render({ items: eventItems }); });
+      return;
     }
     if (kind === 'gallery' && album) {
       document.getElementById('cmsTitle').textContent = data.title;
       document.getElementById('cmsDescription').textContent = data.description || '';
       pagination.append(link('← All albums', 'gallery.html', 'link-gold'));
     }
-    var renderItem = kind === 'blog' ? blogCard : kind === 'events' ? eventCard : album ? photoCard : albumCard;
+    var renderItem = album ? photoCard : albumCard;
     data.items.forEach(function (item) { content.append(renderItem(item)); });
     status.textContent = data.items.length ? '' : (page > 1 ? 'No content on this page. Return to the first page.' : 'No published content yet. Please check back soon.');
     if (page > 1) pagination.append(link('← Previous', pageLink(page - 1), 'btn btn-outline'), link('First page', pageLink(1), 'link-gold'));
     var size = kind === 'gallery' ? (album ? 24 : 20) : 12;
     if (page * size < data.total) pagination.append(link('Next →', pageLink(page + 1), 'btn btn-outline'));
   }
+  async function fetchPage(path, number, signal) {
+    var response = await fetch(API + path + '?page=' + number, {
+      credentials: 'omit', cache: 'no-store', signal: signal
+    });
+    if (!response.ok) {
+      if (response.status === 404) throw new Error('missing');
+      throw new Error('unavailable');
+    }
+    return response.json();
+  }
+  async function fetchAll(path, signal, pageSize) {
+    var result = await fetchPage(path, 1, signal);
+    if (!Array.isArray(result.items) || !Number.isFinite(Number(result.total))) {
+      throw new Error('Invalid content response');
+    }
+    var items = result.items.slice();
+    var total = Number(result.total);
+    var pages = Math.ceil(total / pageSize);
+    for (var number = 2; number <= pages && number <= 10000; number += 1) {
+      var next = await fetchPage(path, number, signal);
+      if (!Array.isArray(next.items) || !next.items.length) throw new Error('Invalid content response');
+      items = items.concat(next.items);
+    }
+    if (items.length < total) throw new Error('Invalid content response');
+    result.items = uniqueItems(items).slice(0, total);
+    return result;
+  }
   async function load() {
     status.textContent = 'Loading content…';
     var controller = new AbortController();
-    var timer = window.setTimeout(function () { controller.abort(); }, 15000);
+    var timer = window.setTimeout(function () { controller.abort(); }, 60000);
     try {
       if (kind === 'post' && !slug) throw new Error('missing');
       var path = kind === 'post' ? 'blog/' + encodeURIComponent(slug)
         : kind === 'gallery' ? 'gallery/albums' + (album ? '/' + encodeURIComponent(album) : '') : kind;
-      var response = await fetch(API + path + '?page=' + page, {
-        credentials: 'omit', cache: 'no-store', signal: controller.signal
-      });
-      if (!response.ok) {
-        if (response.status === 404) throw new Error('missing');
-        throw new Error('unavailable');
+      if (kind === 'gallery' && !album) {
+        var albums = await fetchAll(path, controller.signal, 20);
+        var photos = [];
+        for (var albumItem of albums.items) {
+          if (!albumItem.slug) continue;
+          var albumData = await fetchAll(path + '/' + encodeURIComponent(albumItem.slug), controller.signal, 24);
+          albumData.items.forEach(function (item) { photos.push({ item: item, album: albumItem }); });
+        }
+        content.replaceChildren();
+        pagination.replaceChildren();
+        albums.items.filter(function (item) { return !!item.slug; }).forEach(function (item) {
+          content.append(albumCard(item));
+        });
+        var galleryGrid = document.getElementById('galGrid');
+        if (!galleryGrid) throw new Error('Gallery photo list is unavailable');
+        var dynamicPhotos = document.createDocumentFragment();
+        photos.forEach(function (photo, index) {
+          var node = galleryPhoto(photo.item, photo.album, index);
+          if (node) dynamicPhotos.append(node);
+        });
+        galleryGrid.prepend(dynamicPhotos);
+        var gallerySearch = document.getElementById('gallerySearch');
+        if (gallerySearch) gallerySearch.dispatchEvent(new Event('input', { bubbles: true }));
+        status.textContent = albums.items.length ? '' : 'No published albums yet. Please check back soon.';
+        return;
       }
-      render(await response.json());
+      if (kind === 'blog' || kind === 'events') {
+        render(await fetchAll(path, controller.signal, 12));
+      } else {
+        render(await fetchPage(path, page, controller.signal));
+      }
     } catch (error) {
       content.replaceChildren();
       pagination.replaceChildren();
+      if (kind === 'blog' && blogGrid) {
+        blogGrid.replaceChildren();
+        legacyPosts.forEach(function (item) { content.append(item); });
+      }
       status.textContent = error.message === 'missing' ? 'This content is no longer available.' : 'We could not load church content. Please try again.';
       var retry = element('button', 'Try again', 'btn btn-outline');
       retry.type = 'button';
@@ -211,30 +342,15 @@
       if (kind === 'gallery' && album) pagination.append(link('← All albums', 'gallery.html'));
     } finally { window.clearTimeout(timer); }
   }
-  var preview = document.getElementById('existingPostPreview');
-  if (preview) {
-    document.querySelectorAll('[data-existing-post]').forEach(function (trigger) {
-      trigger.addEventListener('click', function (event) {
-        event.preventDefault();
-        var post = trigger.closest('.post-card');
-        document.getElementById('existingPostTitle').textContent = post.querySelector('.post-title').textContent;
-        document.getElementById('existingPostExcerpt').textContent = post.querySelector('.post-excerpt').textContent;
-        preview.showModal();
-      });
-    });
-    document.getElementById('existingPostClose').addEventListener('click', function () { preview.close(); });
-  }
   load();
   // Remove events that end while the visitor keeps the page open.
   if (kind === 'events') window.setInterval(function () {
-    content.querySelectorAll('[data-ends-at]').forEach(function (node) {
+    root.querySelectorAll('[data-ends-at]').forEach(function (node) {
       if (new Date(node.dataset.endsAt).getTime() <= Date.now()) node.remove();
     });
     var emptyState = document.getElementById('eventsEmpty');
     if (emptyState) {
-      emptyState.hidden = !!document.querySelector(
-        '#eventsGrid .event-card:not([hidden]), #cmsContent .event-card'
-      );
+      emptyState.hidden = !!document.querySelector('#eventsGrid .event-card:not([hidden])');
     }
   }, 1000);
 })();

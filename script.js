@@ -125,7 +125,6 @@
 
     if (!chips || !grid) return;
 
-    var items = grid.querySelectorAll('[data-cat]');
     var search = document.getElementById(searchId);
     var status = document.getElementById(statusId);
     var category = 'all';
@@ -134,7 +133,7 @@
       var query = search ? search.value.trim().toLowerCase() : '';
       var visibleCount = 0;
 
-      items.forEach(function (item) {
+      grid.querySelectorAll('[data-cat]').forEach(function (item) {
         var image = item.querySelector('img');
         var searchableText = [
           item.dataset.event,
@@ -335,9 +334,7 @@
     function updateEventsEmptyState() {
       if (!eventsEmpty) return;
 
-      var cards = document.querySelectorAll(
-        '#eventsGrid .event-card, #cmsContent .event-card'
-      );
+      var cards = document.querySelectorAll('#eventsGrid .event-card');
       var hasVisibleEvent = Array.from(cards).some(function (card) {
         return !card.hidden && card.style.display !== 'none';
       });
@@ -474,7 +471,7 @@
   ) {
     bindContentDialog(postDialog);
 
-    blogGrid.addEventListener('click', function (event) {
+    document.addEventListener('click', function (event) {
       var trigger = event.target.closest('[data-post-open]');
       var card = trigger && trigger.closest('.post-card');
 

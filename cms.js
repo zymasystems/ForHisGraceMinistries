@@ -195,6 +195,7 @@
     if (!img) return null;
     var node = element('button', null, 'img g g-' + ((index % 5) + 1) + ' gallery-photo');
     node.type = 'button';
+    node.dataset.cmsPhoto = 'true';
     node.setAttribute('aria-label', 'View photo: ' + alt);
     node.dataset.cat = String(item.category || albumItem.category || 'all').toLowerCase();
     node.dataset.event = albumItem.title || '';
@@ -296,12 +297,24 @@
       var path = kind === 'post' ? 'blog/' + encodeURIComponent(slug)
         : kind === 'gallery' ? 'gallery/albums' + (album ? '/' + encodeURIComponent(album) : '') : kind;
       if (kind === 'gallery' && !album) {
-        var albums = await fetchAll(path, controller.signal, 20);
-        var photos = [];
+        // Load both sources: an album is optional for portal gallery uploads.
+        // A failure in one feed must not hide photos from the other feed.
+        var feeds = await Promise.allSettled([
+          fetchAll(path, controller.signal, 20),
+          fetchAll('gallery/images', controller.signal, 24)
+        ]);
+        if (feeds.every(function (feed) { return feed.status === 'rejected'; })) throw new Error('unavailable');
+        var partial = feeds.some(function (feed) { return feed.status === 'rejected'; });
+        var albums = feeds[0].status === 'fulfilled' ? feeds[0].value : { items: [] };
+        var standalone = feeds[1].status === 'fulfilled' ? feeds[1].value : { items: [] };
+        var photos = standalone.items.map(function (item) { return { item: item, album: { title: 'Gallery photos' } }; });
         for (var albumItem of albums.items) {
           if (!albumItem.slug) continue;
-          var albumData = await fetchAll(path + '/' + encodeURIComponent(albumItem.slug), controller.signal, 24);
-          albumData.items.forEach(function (item) { photos.push({ item: item, album: albumItem }); });
+          try {
+            var albumData = await fetchAll(path + '/' + encodeURIComponent(albumItem.slug), controller.signal, 24);
+            albumData.items.forEach(function (item) { photos.push({ item: item, album: albumItem }); });
+          } catch (_) { partial = true; }
+
         }
         content.replaceChildren();
         pagination.replaceChildren();
@@ -315,10 +328,16 @@
           var node = galleryPhoto(photo.item, photo.album, index);
           if (node) dynamicPhotos.append(node);
         });
+        galleryGrid.querySelectorAll('[data-cms-photo]').forEach(function (node) { node.remove(); });
         galleryGrid.prepend(dynamicPhotos);
         var gallerySearch = document.getElementById('gallerySearch');
         if (gallerySearch) gallerySearch.dispatchEvent(new Event('input', { bubbles: true }));
-        status.textContent = albums.items.length ? '' : 'No published albums yet. Please check back soon.';
+        status.textContent = partial ? 'Some gallery content could not load. The available photos are shown.'
+          : albums.items.length || photos.length ? '' : 'No published photos or albums yet. Please check back soon.';
+        if (partial) {
+          var retryGallery = element('button', 'Try again', 'btn btn-outline'); retryGallery.type = 'button';
+          retryGallery.addEventListener('click', load); pagination.append(retryGallery);
+        }
         return;
       }
       if (kind === 'blog' || kind === 'events') {

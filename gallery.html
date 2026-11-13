@@ -118,6 +118,9 @@
               <img src="images/Deacon%20Zuma.png" alt="Deacon Zuma" loading="lazy">
             </button>
           </div>
+          <div class="gallery-more-wrap">
+            <button class="btn btn-outline" id="galleryLoadMore" type="button" hidden>Load 10 more photos</button>
+          </div>
         </div>
       </section>
       <dialog class="gallery-viewer" id="galleryViewer" aria-label="Photo viewer">
@@ -127,7 +130,7 @@
           <figcaption id="galleryViewerCaption"></figcaption>
         </figure>
       </dialog>
-      <section class="section" aria-labelledby="cmsTitle">
+      <section class="section" id="albumsSection" aria-labelledby="cmsTitle" hidden>
         <div class="wrap">
           <header class="sec-head"><h2 id="cmsTitle">More church albums</h2><p id="cmsDescription"></p></header>
           <p id="cmsStatus" role="status" aria-live="polite">Loading content…</p>

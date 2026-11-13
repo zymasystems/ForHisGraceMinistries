@@ -17,12 +17,24 @@
   var legacyPosts = kind === 'blog' && blogGrid ? Array.from(blogGrid.children) : [];
   var transitionTimer;
   if (kind === 'blog') legacyPosts.forEach(function (item) { content.append(item); });
+  var embeddedGalleryImages = [
+    {url: 'images/Church%20leadership.jpeg', alt: 'For His Grace Ministries leadership'},
+    {url: 'images/Senior%20Pastor%20Khumalo.jpeg', alt: 'Senior Pastor Khumalo'},
+    {url: 'images/Pastor%20Mofokeng.jpeg', alt: 'Pastor Mofokeng'},
+    {url: 'images/Overseer%20Nomsa%20Khumalo%20and%20Senior%20Pastor%20Khumalo.jpeg', alt: 'Church leaders together'},
+    {url: 'images/Deacon%20Zuma.png', alt: 'Deacon Zuma'}
+  ];
+  var featuredImages = embeddedGalleryImages.slice();
 
   function element(tag, text, className) {
     var node = document.createElement(tag);
     if (text != null) node.textContent = text;
     if (className) node.className = className;
     return node;
+  }
+  function setSectionVisible(id, visible) {
+    var section = document.getElementById(id);
+    if (section) section.hidden = !visible;
   }
   function link(text, href, className) {
     var node = element('a', text, className);
@@ -34,15 +46,100 @@
     query.set('page', number);
     return '?' + query.toString();
   }
-  function image(url, alt) {
+  function safeImageUrl(url) {
+    if (typeof url !== 'string' || !url.trim()) return null;
     var parsed;
-    try { parsed = new URL(url); } catch (_) { return null; }
-    if (parsed.protocol !== 'https:') return null;
+    try { parsed = new URL(url.trim(), window.location.href); } catch (_) { return null; }
+    if (parsed.protocol !== 'https:' && parsed.origin !== window.location.origin) return null;
+    return parsed.href;
+  }
+  function image(url, alt) {
+    var safeUrl = safeImageUrl(url);
+    if (!safeUrl) return null;
     var img = element('img', null, 'cms-photo');
-    img.src = parsed.href;
+    img.src = safeUrl;
     img.alt = alt || '';
     img.loading = 'lazy';
     return img;
+  }
+  function validImageUrl(url) {
+    return !!safeImageUrl(url);
+  }
+  function imageKey(url) {
+    var safeUrl = safeImageUrl(url);
+    if (!safeUrl) return null;
+    var parsed = new URL(safeUrl);
+    return parsed.origin + parsed.pathname;
+  }
+  async function loadFeaturedImages(signal) {
+    try {
+      var albums = await fetchPage('gallery/albums', 1, signal);
+      if (!Array.isArray(albums.items)) throw new Error('Invalid gallery response');
+      var knownImages = new Set(featuredImages.map(function (item) { return imageKey(item.url); }));
+      albums.items.forEach(function (albumItem) {
+        var key = imageKey(albumItem.coverUrl);
+        if (key && !knownImages.has(key)) {
+          featuredImages.push({url: safeImageUrl(albumItem.coverUrl), alt: albumItem.title || 'Church gallery'});
+          knownImages.add(key);
+        }
+      });
+    } catch (error) {
+      if (error.name === 'AbortError') throw error;
+      console.warn('Could not load gallery cover images for content cards.', error);
+    }
+    return featuredImages;
+  }
+  function reserveFeaturedImages(items, usedImages) {
+    items.forEach(function (item) {
+      var key = imageKey(item.featuredImageUrl);
+      if (key) usedImages.add(key);
+    });
+    return usedImages;
+  }
+  function randomFeaturedImage(usedImages) {
+    var available = featuredImages.filter(function (item) {
+      return !usedImages.has(imageKey(item.url));
+    });
+    var choices = available.length ? available : featuredImages;
+    var fallback = choices[Math.floor(Math.random() * choices.length)];
+    usedImages.add(imageKey(fallback.url));
+    return fallback;
+  }
+  function addFeaturedImageFallbacks(items, usedImages) {
+    usedImages = usedImages || new Set();
+    reserveFeaturedImages(items, usedImages);
+    items.forEach(function (item) {
+      if (!validImageUrl(item.featuredImageUrl)) {
+        var fallback = randomFeaturedImage(usedImages);
+        item.featuredImageUrl = fallback.url;
+        item.featuredImageAlt = fallback.alt;
+      }
+    });
+    return usedImages;
+  }
+  function decorateLegacyPosts(usedImages) {
+    usedImages = usedImages || new Set();
+    legacyPosts.forEach(function (post) {
+      var currentImage = post.querySelector('.post-img img');
+      var currentKey = currentImage && imageKey(currentImage.src);
+      if (currentKey) usedImages.add(currentKey);
+    });
+    legacyPosts.forEach(function (post) {
+      var frame = post.querySelector('.post-img');
+      if (!frame) return;
+      var existing = frame.querySelector('img');
+      if (!existing) {
+        var fallback = randomFeaturedImage(usedImages);
+        existing = element('img');
+        existing.src = fallback.url;
+        existing.alt = fallback.alt;
+        existing.loading = 'lazy';
+        var placeholder = frame.querySelector('.placeholder');
+        if (placeholder) placeholder.remove();
+        frame.append(existing);
+      }
+    });
+    return usedImages;
   }
   function date(value) {
     var d = new Date(value);
@@ -93,11 +190,22 @@
   function card() { return element('article', null, 'cms-card'); }
   function blogCard(item) {
     var node = element('article', null, 'post-card');
+    var frame = element('div', null, 'post-img');
     var body = element('div', null, 'post-body');
-    var featured = image(item.featuredImageUrl, item.title); if (featured) node.append(featured);
-    body.append(element('p', item.category, 'post-tags'), element('h2', item.title, 'post-title'),
-      element('p', item.excerpt, 'post-excerpt'), element('p', [item.author, date(item.publishedAt)].filter(Boolean).join(' · '), 'post-meta'),
-      link('Read more →', 'blog-post.html?slug=' + encodeURIComponent(item.slug), 'post-read'));
+    var featured = image(item.featuredImageUrl, item.featuredImageAlt || item.title);
+    if (featured) frame.append(featured);
+    else frame.append(element('div', 'Church gallery', 'placeholder'));
+    var tags = element('div', null, 'post-tags');
+    if (item.category) tags.append(element('span', item.category, 'chip-tag'));
+    var meta = element('div', null, 'post-meta');
+    [date(item.publishedAt), item.author].filter(Boolean).forEach(function (value) {
+      meta.append(element('span', value));
+    });
+    var footer = element('div', null, 'post-footer');
+    footer.append(meta, link('Read article →', 'blog-post.html?slug=' + encodeURIComponent(item.slug), 'post-read'));
+    body.append(tags, element('h2', item.title, 'post-title'),
+      element('p', item.excerpt, 'post-excerpt'), footer);
+    node.append(frame);
     node.append(body);
     return node;
   }
@@ -105,7 +213,7 @@
     var node = element('article', null, 'event-card');
     var body = element('div', null, 'event-body');
     var imageFrame = element('div', null, 'event-img');
-    var featured = image(item.featuredImageUrl, item.title);
+    var featured = image(item.featuredImageUrl, item.featuredImageAlt || item.title);
     if (featured) imageFrame.append(featured);
     else imageFrame.append(element('div', 'Event photo', 'placeholder'));
     var eventDate = element('div', null, 'event-date');
@@ -206,6 +314,7 @@
     content.replaceChildren();
     pagination.replaceChildren();
     if (kind === 'post') {
+      addFeaturedImageFallbacks([data]);
       document.getElementById('cmsTitle').textContent = data.title;
       document.getElementById('cmsDescription').textContent = data.excerpt || '';
       document.title = (data.seoTitle || data.title) + ' | For His Grace Ministries';
@@ -213,7 +322,8 @@
       document.querySelector('link[rel="canonical"]').href = window.location.origin + '/blog-post.html?slug=' + encodeURIComponent(slug);
       var articleBody = element('div', null, 'cms-copy');
       if (window.FhgmContent) FhgmContent.render(articleBody, data.content, data.contentFormat); else articleBody.textContent = data.content || '';
-      var featured = image(data.featuredImageUrl, data.title); if (featured) content.append(featured);
+      var featured = image(data.featuredImageUrl, data.featuredImageAlt || data.title);
+      if (featured) content.append(featured);
       content.append(element('p', [data.author, date(data.publishedAt)].filter(Boolean).join(' · '), 'cms-meta'),
         articleBody, link('← All articles', 'blog.html', 'link-gold'));
       status.textContent = '';
@@ -225,10 +335,15 @@
       var articles = newestFirst(uniqueItems(data.items));
       var recentArticles = articles.filter(function (item) { return isRecent(item, false); });
       var olderArticles = articles.filter(function (item) { return !isRecent(item, false); });
+      var usedImages = reserveFeaturedImages(articles, new Set());
+      addFeaturedImageFallbacks(recentArticles, usedImages);
+      decorateLegacyPosts(usedImages);
+      addFeaturedImageFallbacks(olderArticles, usedImages);
       blogGrid.replaceChildren();
       recentArticles.forEach(function (item) { blogGrid.append(blogCard(item)); });
       olderArticles.forEach(function (item) { content.append(blogCard(item)); });
       legacyPosts.forEach(function (item) { content.append(item); });
+      setSectionVisible('blogArchiveSection', !!content.querySelector('.post-card'));
       status.textContent = recentArticles.length ? '' : 'No newly published articles in the last two weeks.';
       scheduleArchive(articles, function () { render({ items: articles }); });
       return;
@@ -237,14 +352,20 @@
       var eventItems = newestFirst(uniqueItems(data.items));
       var recentEvents = eventItems.filter(function (item) { return isRecent(item, true); });
       var olderEvents = eventItems.filter(function (item) { return !isRecent(item, true); });
+      var usedEventImages = reserveFeaturedImages(eventItems, new Set());
+      addFeaturedImageFallbacks(recentEvents, usedEventImages);
+      addFeaturedImageFallbacks(olderEvents, usedEventImages);
       var upcoming = document.getElementById('eventsGrid');
       if (!upcoming) throw new Error('Upcoming events list is unavailable');
       upcoming.replaceChildren();
       recentEvents.forEach(function (item) { upcoming.append(eventCard(item)); });
       olderEvents.forEach(function (item) { content.append(eventCard(item)); });
+      setSectionVisible('moreEventsSection', olderEvents.length > 0);
       var emptyState = document.getElementById('eventsEmpty');
       if (emptyState) emptyState.hidden = recentEvents.length > 0;
-      status.textContent = recentEvents.length ? '' : 'No recently published events. See More events below.';
+      status.textContent = recentEvents.length ? '' : olderEvents.length
+        ? 'No recently published events. See More events below.'
+        : '';
       scheduleArchive(eventItems, function () { render({ items: eventItems }); });
       return;
     }
@@ -255,6 +376,11 @@
     }
     var renderItem = album ? photoCard : albumCard;
     data.items.forEach(function (item) { content.append(renderItem(item)); });
+    if (kind === 'gallery') {
+      setSectionVisible('albumsSection', data.items.some(function (item) {
+        return album ? !!item.url : !!item.slug;
+      }));
+    }
     status.textContent = data.items.length ? '' : (page > 1 ? 'No content on this page. Return to the first page.' : 'No published content yet. Please check back soon.');
     if (page > 1) pagination.append(link('← Previous', pageLink(page - 1), 'btn btn-outline'), link('First page', pageLink(1), 'link-gold'));
     var size = kind === 'gallery' ? (album ? 24 : 20) : 12;
@@ -305,15 +431,25 @@
         }
         content.replaceChildren();
         pagination.replaceChildren();
-        albums.items.filter(function (item) { return !!item.slug; }).forEach(function (item) {
+        var publishedAlbums = albums.items.filter(function (item) { return !!item.slug; });
+        publishedAlbums.forEach(function (item) {
           content.append(albumCard(item));
         });
+        setSectionVisible('albumsSection', publishedAlbums.length > 0);
         var galleryGrid = document.getElementById('galGrid');
         if (!galleryGrid) throw new Error('Gallery photo list is unavailable');
         var dynamicPhotos = document.createDocumentFragment();
+        var knownPhotoUrls = new Set(Array.from(galleryGrid.querySelectorAll('img')).map(function (img) {
+          return imageKey(img.src);
+        }).filter(Boolean));
         photos.forEach(function (photo, index) {
+          var key = imageKey(photo.item.url);
+          if (!key || knownPhotoUrls.has(key)) return;
           var node = galleryPhoto(photo.item, photo.album, index);
-          if (node) dynamicPhotos.append(node);
+          if (node) {
+            knownPhotoUrls.add(key);
+            dynamicPhotos.append(node);
+          }
         });
         galleryGrid.prepend(dynamicPhotos);
         var gallerySearch = document.getElementById('gallerySearch');
@@ -321,6 +457,7 @@
         status.textContent = albums.items.length ? '' : 'No published albums yet. Please check back soon.';
         return;
       }
+      if (kind === 'post' || kind === 'blog' || kind === 'events') await loadFeaturedImages(controller.signal);
       if (kind === 'blog' || kind === 'events') {
         render(await fetchAll(path, controller.signal, 12));
       } else {
@@ -331,8 +468,11 @@
       pagination.replaceChildren();
       if (kind === 'blog' && blogGrid) {
         blogGrid.replaceChildren();
+        decorateLegacyPosts();
         legacyPosts.forEach(function (item) { content.append(item); });
+        setSectionVisible('blogArchiveSection', legacyPosts.length > 0);
       }
+      if (kind === 'gallery' && !album) setSectionVisible('albumsSection', true);
       status.textContent = error.message === 'missing' ? 'This content is no longer available.' : 'We could not load church content. Please try again.';
       var retry = element('button', 'Try again', 'btn btn-outline');
       retry.type = 'button';
@@ -348,6 +488,7 @@
     root.querySelectorAll('[data-ends-at]').forEach(function (node) {
       if (new Date(node.dataset.endsAt).getTime() <= Date.now()) node.remove();
     });
+    setSectionVisible('moreEventsSection', !!document.querySelector('#cmsContent .event-card'));
     var emptyState = document.getElementById('eventsEmpty');
     if (emptyState) {
       emptyState.hidden = !!document.querySelector('#eventsGrid .event-card:not([hidden])');

@@ -24,7 +24,6 @@ const assert = require('node:assert/strict');
       assert.equal(await page.locator('#blogHeading').textContent(), 'Latest published articles');
     }
     if (path.startsWith('events.html')) {
-      assert.equal(await page.locator('#eventsGrid .event-card').count(), 1);
       assert.equal(await page.locator('#eventFilters').count(), 1);
     }
     if (path.startsWith('gallery.html')) {
@@ -37,17 +36,23 @@ const assert = require('node:assert/strict');
     ? {total:13,items:Array.from({length:12},(_,i)=>({title:'Archive '+i,slug:'archive-'+i,publishedAt:'2026-10-01T12:00:00Z'}))}
     : payload;
   await visit('blog.html', {total:13, items:[{title:'<img src=x onerror=alert(1)>', slug:'faith & hope', excerpt:'Welcome', author:'Staff', publishedAt:'2026-11-01T12:00:00Z'}]});
-  assert.equal(await page.locator('#blogGrid img').count(), 0);
+  assert.equal(await page.locator('#blogGrid img').count(), 1);
   assert.match(await page.locator('#blogGrid').textContent(), /<img src=x onerror=alert\(1\)>/);
-  assert.match(requests.at(-1), /blog\?page=2/);
+  const featuredPaths = await page.locator('#blogGrid .post-img img, #cmsContent .post-card[data-post-id] .post-img img')
+    .evaluateAll(images => images.map(image => new URL(image.src).pathname));
+  assert.equal(new Set(featuredPaths).size, 4);
+  assert.ok(requests.some(url => /blog\?page=2/.test(url)));
   assert.match(await page.locator('#blogGrid .post-read').getAttribute('href'), /faith%20%26%20hope/);
   responseForRequest = null;
   await visit('blog-post.html?slug=faith', {title:'Faith',content:'First paragraph\n\nSecond paragraph',author:'Staff'});
   assert.match(await page.locator('.cms-copy').textContent(), /Second paragraph/);
-  assert.match(requests.at(-1), /blog\/faith/);
+  assert.ok(await page.locator('#cmsContent > img').count());
+  assert.ok(requests.some(url => /blog\/faith/.test(url)));
   await visit('events.html', {total:1,items:[{title:'Gathering', startsAt:'2099-11-03T08:00:00Z',endsAt:'2099-11-03T10:00:00Z',location:'Church',description:'Join us',publishedAt:'2026-11-05T12:00:00Z'}]});
+  assert.equal(await page.locator('#eventsGrid .event-card').count(), 1);
   assert.match(await page.locator('#eventsGrid').textContent(), /10:00.*12:00/);
   assert.equal(await page.locator('#eventsEmpty').isHidden(), true);
+  assert.ok(await page.locator('#eventsGrid .event-img img').count());
   await page.locator('#eventsGrid').getByRole('button',{name:'View event'}).click();
   assert.equal(await page.locator('#eventDialog').evaluate(node => node.open), true);
   assert.equal(await page.locator('#eventDialogTitle').textContent(), 'Gathering');
@@ -57,7 +62,24 @@ const assert = require('node:assert/strict');
     : {total:1,items:[{title:'Sunday',slug:'sunday',description:'Service',coverUrl:'https://example.org/photo.jpg',imageCount:1}]};
   await visit('gallery.html', {total:1,items:[{title:'Sunday',slug:'sunday',description:'Service',coverUrl:'https://example.org/photo.jpg',imageCount:1}]});
   assert.equal(await page.locator('#galGrid .gallery-photo').count(), 6);
+  assert.equal(await page.locator('#galleryLoadMore').isHidden(), true);
+  assert.equal(await page.locator('#albumsSection').isHidden(), false);
   assert.equal(await page.locator('#cmsContent a').getAttribute('href'), 'gallery.html?album=sunday');
+  responseForRequest = url => url.includes('/albums/first?') || url.includes('/albums/second?')
+    ? {title:'Album',description:'Service',total:1,items:[{url:'https://example.org/shared-photo.jpg?size=large',altText:'Shared photo'}]}
+    : {total:2,items:[
+      {title:'First',slug:'first',description:'First album',coverUrl:'https://example.org/first-cover.jpg',imageCount:1},
+      {title:'Second',slug:'second',description:'Second album',coverUrl:'https://example.org/second-cover.jpg',imageCount:1}
+    ]};
+  await visit('gallery.html', {total:2,items:[]});
+  assert.equal(await page.locator('#galGrid .gallery-photo').count(), 6);
+  responseForRequest = url => url.includes('/albums/sunday?')
+    ? {title:'Sunday',description:'Service',total:12,items:Array.from({length:12},(_,i)=>({url:'https://example.org/photo-'+i+'.jpg',altText:'Photo '+i}))}
+    : {total:1,items:[{title:'Sunday',slug:'sunday',description:'Service',coverUrl:'https://example.org/photo.jpg',imageCount:12}]};
+  await visit('gallery.html', {total:1,items:[{title:'Sunday',slug:'sunday',description:'Service',coverUrl:'https://example.org/photo.jpg',imageCount:12}]});
+  assert.equal(await page.locator('#galGrid .gallery-photo:not([hidden])').count(), 10);
+  await page.locator('#galleryLoadMore').click();
+  assert.equal(await page.locator('#galGrid .gallery-photo:not([hidden])').count(), 17);
   responseForRequest = null;
   await visit('gallery.html?album=sunday&page=2', {title:'Sunday',description:'Service',total:25,items:[{url:'https://example.org/photo.jpg',altText:'Church family',caption:'Together'}]});
   assert.equal(await page.locator('#cmsContent img').getAttribute('alt'), 'Church family');
@@ -65,6 +87,7 @@ const assert = require('node:assert/strict');
   assert.match(await page.locator('#cmsPagination').textContent(), /Previous/);
   await visit('blog.html', {total:0,items:[]});
   assert.match(await page.locator('#cmsStatus').textContent(), /No newly published articles/);
+  assert.equal(await page.locator('#blogArchiveSection').isHidden(), false);
   await page.locator('[data-post-open]').first().click();
   assert.equal(await page.locator('#postDialog').evaluate(node => node.open), true);
   assert.match(await page.locator('#postDialogArticle').textContent(), /grow as we worship/);
@@ -83,6 +106,7 @@ const assert = require('node:assert/strict');
   assert.match(await page.locator('#eventsGrid').textContent(), /Recent event/);
   assert.doesNotMatch(await page.locator('#eventsGrid').textContent(), /Archived event/);
   assert.match(await page.locator('#cmsContent').textContent(), /Archived event/);
+  assert.equal(await page.locator('#moreEventsSection').isHidden(), false);
   responseStatus = 503;
   await visit('blog.html', {});
   assert.match(await page.locator('#cmsStatus').textContent(), /could not load/);
@@ -97,11 +121,36 @@ const assert = require('node:assert/strict');
   responseStatus = 200;
   await visit('gallery.html', {total:0,items:[]});
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  const galleryRows = await page.evaluate(() => {
+    const rows = new Map();
+    document.querySelectorAll('#galGrid .gallery-photo:not([hidden])').forEach(card => {
+      const top = Math.round(card.getBoundingClientRect().top);
+      rows.set(top, (rows.get(top) || 0) + 1);
+    });
+    return Array.from(rows.values());
+  });
+  assert.deepEqual(galleryRows, [1,2,2]);
+  assert.equal(await page.locator('#menuBtn').isVisible(), true);
+  assert.equal(await page.locator('#menuBtn span').count(), 1);
+  await page.setViewportSize({width:320,height:740});
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await page.setViewportSize({width:390,height:844});
   await page.locator('#gallerySearch').fill('Deacon');
   assert.equal(await page.locator('#galGrid .gallery-photo:not([hidden])').count(), 1);
   await page.locator('#galGrid .gallery-photo:not([hidden])').click();
   assert.equal(await page.locator('#galleryViewer').evaluate(node => node.open), true);
   await page.locator('#galleryViewerClose').click();
+  responseForRequest = url => url.endsWith('/gallery/albums?page=1')
+    ? {total:0,items:[]}
+    : payload;
+  await visit('blog.html', {total:1,items:[{title:'Cover fallback',slug:'cover-fallback',publishedAt:'2026-11-05T12:00:00Z'}]});
+  assert.match(await page.locator('#blogGrid .post-img img').getAttribute('src'), /images\/(Church|Senior|Pastor|Overseer|Deacon)/);
+  responseForRequest = null;
+  await visit('events.html', {total:0,items:[]});
+  assert.equal(await page.locator('#moreEventsSection').isHidden(), true);
+  assert.equal(await page.locator('#eventsEmpty').isHidden(), false);
+  await visit('gallery.html', {total:0,items:[]});
+  assert.equal(await page.locator('#albumsSection').isHidden(), true);
   await visit('blog-post.html?slug=formatted', {title:'Formatted',content:'## A heading\n**Bold** and *gentle*\n<script>alert(1)</script>\n[Bad](javascript:alert(1))',contentFormat:'Markdown',featuredImageUrl:'https://example.org/cover.jpg'});
   assert.equal(await page.locator('#cmsContent h3').textContent(), 'A heading');
   assert.equal(await page.locator('#cmsContent strong').textContent(), 'Bold');

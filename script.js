@@ -127,11 +127,13 @@
 
     var search = document.getElementById(searchId);
     var status = document.getElementById(statusId);
+    var loadMore = document.getElementById('galleryLoadMore');
     var category = 'all';
+    var visibleLimit = 10;
 
     function applyFilters() {
       var query = search ? search.value.trim().toLowerCase() : '';
-      var visibleCount = 0;
+      var matching = [];
 
       grid.querySelectorAll('[data-cat]').forEach(function (item) {
         var image = item.querySelector('img');
@@ -144,18 +146,23 @@
         ].join(' ').toLowerCase();
         var matchesCategory = category === 'all' || item.dataset.cat === category;
         var matchesSearch = !query || searchableText.indexOf(query) !== -1;
-        var visible = matchesCategory && matchesSearch;
-
-        item.hidden = !visible;
-        if (visible) visibleCount += 1;
+        if (matchesCategory && matchesSearch) matching.push(item);
       });
 
+      matching.forEach(function (item, index) {
+        item.hidden = index >= visibleLimit;
+      });
       grid.classList.toggle('filtered', category !== 'all' || !!query);
 
       if (status) {
-        status.textContent = visibleCount
-          ? 'Showing ' + visibleCount + (visibleCount === 1 ? ' photo.' : ' photos.')
+        status.textContent = matching.length
+          ? 'Showing ' + Math.min(matching.length, visibleLimit) + ' of ' + matching.length + ' ' +
+            (matching.length === 1 ? 'photo.' : 'photos.')
           : 'No photos match your search.';
+      }
+      if (loadMore) {
+        loadMore.hidden = matching.length <= visibleLimit;
+        loadMore.textContent = 'Load 10 more photos';
       }
     }
 
@@ -169,10 +176,18 @@
       });
 
       category = btn.dataset.f;
+      visibleLimit = 10;
       applyFilters();
     });
 
-    if (search) search.addEventListener('input', applyFilters);
+    if (search) search.addEventListener('input', function () {
+      visibleLimit = 10;
+      applyFilters();
+    });
+    if (loadMore) loadMore.addEventListener('click', function () {
+      visibleLimit += 10;
+      applyFilters();
+    });
     applyFilters();
   }
 

@@ -5,9 +5,14 @@ const assert = require('node:assert/strict');
   const browser = await chromium.launch({headless: true, executablePath: process.env.CHROMIUM_PATH || undefined, args:['--no-sandbox']});
   const page = await browser.newPage();
   let payload, responseForRequest = null, responseStatus = 200, requests = [];
+  let standaloneResponse = {total:0,items:[]}, standaloneStatus = 200;
   await page.route('https://admin.hisgraceministries.co.za/api/public/**', async route => {
     requests.push(route.request().url());
     assert.equal(route.request().headers().cookie, undefined);
+    if (route.request().url().includes('/gallery/images?')) {
+      const body = typeof standaloneResponse === 'function' ? standaloneResponse(route.request().url()) : standaloneResponse;
+      await route.fulfill({status:standaloneStatus,contentType:'application/json',body:JSON.stringify(body)}); return;
+    }
     const body = responseForRequest ? responseForRequest(route.request().url(), payload) : payload;
     await route.fulfill({status: responseStatus, contentType:'application/json', body:JSON.stringify(body)});
   });
@@ -80,7 +85,35 @@ const assert = require('node:assert/strict');
   assert.equal(await page.locator('#galGrid .gallery-photo:not([hidden])').count(), 10);
   await page.locator('#galleryLoadMore').click();
   assert.equal(await page.locator('#galGrid .gallery-photo:not([hidden])').count(), 17);
+  // Standalone images are loaded through every page, alongside existing album photos.
+  const loose = Array.from({length:25}, (_, i) => ({url:'https://example.org/loose-'+i+'.jpg',altText:'Standalone worship '+i,caption:'Church gathering'}));
+  standaloneResponse = url => ({total:25,items:new URL(url).searchParams.get('page') === '2' ? loose.slice(24) : loose.slice(0,24)});
+  await visit('gallery.html', {});
+  assert.equal(await page.locator('#galGrid .gallery-photo').count(), 31);
+  assert.ok(requests.some(url => url.includes('/gallery/images?page=2')));
+  await page.locator('#gallerySearch').fill('Standalone worship 24');
+  assert.equal(await page.locator('#galGrid .gallery-photo:not([hidden])').count(), 1);
+  await page.locator('#galGrid .gallery-photo:not([hidden])').click();
+  assert.equal(await page.locator('#galleryViewer').evaluate(node => node.open), true);
+  assert.match(await page.locator('#galleryViewerImage').getAttribute('src'), /loose-24/);
+  await page.locator('#galleryViewerClose').click();
+  // A feed failure preserves album photos and offers a retry without duplicate cards.
+  standaloneStatus = 503;
+  await visit('gallery.html', {});
+  assert.equal(await page.locator('#galGrid .gallery-photo').count(), 6);
+  assert.match(await page.locator('#cmsStatus').textContent(), /Some gallery content/);
+  standaloneStatus = 200;
+  await page.getByRole('button',{name:'Try again'}).click();
+  await page.waitForFunction(() => document.querySelectorAll('#galGrid .gallery-photo').length === 31);
+  assert.equal(await page.locator('#galGrid [data-cms-photo]').count(), 26);
+  // No albums are needed to show standalone images, and empty feeds preserve static photos.
   responseForRequest = null;
+  standaloneResponse = {total:2,items:loose.slice(0,2)};
+  await visit('gallery.html', {total:0,items:[]});
+  assert.equal(await page.locator('#galGrid .gallery-photo').count(), 7);
+  assert.equal(await page.locator('#cmsStatus').textContent(), '');
+  assert.equal(await page.locator('#albumsSection').isHidden(), true);
+  standaloneResponse = {total:0,items:[]};
   await visit('gallery.html?album=sunday&page=2', {title:'Sunday',description:'Service',total:25,items:[{url:'https://example.org/photo.jpg',altText:'Church family',caption:'Together'}]});
   assert.equal(await page.locator('#cmsContent img').getAttribute('alt'), 'Church family');
   assert.match(requests.at(-1), /albums\/sunday\?page=2/);

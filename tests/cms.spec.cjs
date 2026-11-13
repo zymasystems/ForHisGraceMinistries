@@ -39,19 +39,54 @@ const assert = require('node:assert/strict');
   }
   responseForRequest = url => url.endsWith('/blog?page=2')
     ? {total:13,items:Array.from({length:12},(_,i)=>({title:'Archive '+i,slug:'archive-'+i,publishedAt:'2026-10-01T12:00:00Z'}))}
-    : payload;
-  await visit('blog.html', {total:13, items:[{title:'<img src=x onerror=alert(1)>', slug:'faith & hope', excerpt:'Welcome', author:'Staff', publishedAt:'2026-11-01T12:00:00Z'}]});
+    : url.includes('/blog/faith%20%26%20hope?page=1')
+      ? {
+        title:'Uploaded article',content:'## Full story\n\nThe complete uploaded article.',
+        contentFormat:'Markdown',category:'Teaching',tags:'Faith, Hope',author:'Staff'
+      }
+      : payload;
+  await visit('blog.html', {total:13, items:[{
+    title:'<img src=x onerror=alert(1)>', slug:'faith & hope', excerpt:'Welcome',
+    category:'Teaching', tags:'Faith, Teaching', author:'Staff',
+    publishedAt:'2026-11-01T12:00:00Z'
+  }]});
   assert.equal(await page.locator('#blogGrid img').count(), 1);
+  assert.equal(await page.locator('#blogGrid .post-img img.cms-photo').count(), 0);
   assert.match(await page.locator('#blogGrid').textContent(), /<img src=x onerror=alert\(1\)>/);
+  assert.equal(await page.locator('#blogGrid .post-tags .chip-tag').count(), 2);
+  assert.equal(await page.locator('#blogGrid .post-tags').textContent(), 'TeachingFaith');
+  assert.equal(await page.locator('#blogGrid .post-meta svg use').count(), 2);
+  assert.equal(await page.locator('#blogGrid .post-read').getAttribute('data-post-open'), '');
   const featuredPaths = await page.locator('#blogGrid .post-img img, #cmsContent .post-card[data-post-id] .post-img img')
     .evaluateAll(images => images.map(image => new URL(image.src).pathname));
   assert.equal(new Set(featuredPaths).size, 4);
   assert.ok(requests.some(url => /blog\?page=2/.test(url)));
-  assert.match(await page.locator('#blogGrid .post-read').getAttribute('href'), /faith%20%26%20hope/);
+  await page.locator('#blogGrid .post-read').click();
+  await page.waitForFunction(() => document.querySelector('#postDialog').open);
+  assert.equal(await page.locator('#postDialogTitle').textContent(), '<img src=x onerror=alert(1)>');
+  assert.equal(await page.locator('#postDialogExcerpt').textContent(), 'Welcome');
+  assert.equal(await page.locator('#postDialogExcerpt').isVisible(), true);
+  assert.equal(await page.locator('#postDialogLabels').textContent(), 'TeachingFaithHope');
+  assert.match(await page.locator('#postDialogMeta').textContent(), /2026.*By Staff/);
+  assert.equal(await page.locator('#postDialogMeta .content-dialog-meta-item').count(), 2);
+  assert.match(await page.locator('#postDialogArticle').textContent(), /The complete uploaded article/);
+  assert.equal(await page.locator('#postDialogArticle h3').textContent(), 'Full story');
+  assert.ok(requests.some(url => /blog\/faith%20%26%20hope\?page=1/.test(url)));
+  await page.locator('#postDialog [data-dialog-close]').click();
   responseForRequest = null;
-  await visit('blog-post.html?slug=faith', {title:'Faith',content:'First paragraph\n\nSecond paragraph',author:'Staff'});
+  await visit('blog-post.html?slug=faith', {
+    title:'Faith',excerpt:'A subtitle for the article.',content:'First **paragraph**\n\nSecond paragraph',contentFormat:'PlainText',
+    featuredImageUrl:'',category:'Reflection',tags:'Faith, Hope',author:'Staff',publishedAt:'2026-11-06T12:00:00Z'
+  });
+  assert.equal(await page.locator('#postDialog').evaluate(node => node.open), true);
+  assert.equal(await page.locator('#cmsDescription').textContent(), 'A subtitle for the article.');
+  assert.equal(await page.locator('#cmsDescription').isVisible(), true);
+  assert.equal(await page.locator('#postDialogLabels').textContent(), 'ReflectionFaithHope');
+  assert.match(await page.locator('#postDialogMeta').textContent(), /2026.*By Staff/);
   assert.match(await page.locator('.cms-copy').textContent(), /Second paragraph/);
-  assert.ok(await page.locator('#cmsContent > img').count());
+  assert.equal(await page.locator('.cms-copy strong').count(), 0);
+  assert.match(await page.locator('#postDialogMeta').textContent(), /Reflection.*Faith.*Hope/);
+  assert.equal(await page.locator('#postDialogImage img').count(), 1);
   assert.ok(requests.some(url => /blog\/faith/.test(url)));
   await visit('events.html', {total:1,items:[{title:'Gathering', startsAt:'2099-11-03T08:00:00Z',endsAt:'2099-11-03T10:00:00Z',location:'Church',description:'Join us',publishedAt:'2026-11-05T12:00:00Z'}]});
   assert.equal(await page.locator('#eventsGrid .event-card').count(), 1);
@@ -123,6 +158,8 @@ const assert = require('node:assert/strict');
   assert.equal(await page.locator('#blogArchiveSection').isHidden(), false);
   await page.locator('[data-post-open]').first().click();
   assert.equal(await page.locator('#postDialog').evaluate(node => node.open), true);
+  assert.equal(await page.locator('#postDialogLabels').textContent(), 'TeachingFaith');
+  assert.match(await page.locator('#postDialogMeta').textContent(), /14 Mar 2026.*By Apostle Nathi Khumalo/);
   assert.match(await page.locator('#postDialogArticle').textContent(), /grow as we worship/);
   await page.locator('#postDialog [data-dialog-close]').click();
   await visit('blog.html', {total:2,items:[
@@ -184,12 +221,12 @@ const assert = require('node:assert/strict');
   assert.equal(await page.locator('#eventsEmpty').isHidden(), false);
   await visit('gallery.html', {total:0,items:[]});
   assert.equal(await page.locator('#albumsSection').isHidden(), true);
-  await visit('blog-post.html?slug=formatted', {title:'Formatted',content:'## A heading\n**Bold** and *gentle*\n<script>alert(1)</script>\n[Bad](javascript:alert(1))',contentFormat:'Markdown',featuredImageUrl:'https://example.org/cover.jpg'});
+  await visit('blog-post.html?slug=formatted', {title:'Formatted',content:'## A heading\n**Bold** and *gentle*\n<script>alert(1)</script>\n[Bad](javascript:alert(1))',contentFormat:'Formatted text (Markdown)',featuredImageUrl:'https://example.org/cover.jpg'});
   assert.equal(await page.locator('#cmsContent h3').textContent(), 'A heading');
   assert.equal(await page.locator('#cmsContent strong').textContent(), 'Bold');
   assert.equal(await page.locator('#cmsContent script').count(), 0);
   assert.equal(await page.locator('#cmsContent a[href^="javascript:"]').count(), 0);
-  assert.equal(await page.locator('#cmsContent img').getAttribute('src'), 'https://example.org/cover.jpg');
+  assert.equal(await page.locator('#postDialogImage img').getAttribute('src'), 'https://example.org/cover.jpg');
   await visit('events.html', {total:1,items:[{title:'Weekly service',slug:'weekly',startsAt:'2099-11-03T08:00:00Z',endsAt:'2099-11-03T10:00:00Z',location:'Church',description:'Join us'}]});
   const downloadPromise = page.waitForEvent('download');
   await page.locator('#eventsGrid').getByRole('button',{name:'Add to calendar'}).click();

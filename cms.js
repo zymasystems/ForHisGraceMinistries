@@ -147,6 +147,19 @@
       dateStyle: 'medium', timeZone: 'Africa/Johannesburg'
     }).format(d);
   }
+  function blogLabels(item) {
+    var labels = Array.isArray(item.tags) ? item.tags.slice()
+      : typeof item.tags === 'string' ? item.tags.split(',') : [];
+    if (item.category) labels.unshift(item.category);
+    var seen = new Set();
+    return labels.filter(function (label) {
+      if (typeof label !== 'string' || !label.trim()) return false;
+      var key = label.trim().toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).map(function (label) { return label.trim(); });
+  }
   function publishedTime(item) {
     var value = item.publishedAt || item.createdAt || item.uploadedAt || item.published_at || item.created_at;
     var timestamp = value ? new Date(value).getTime() : NaN;
@@ -193,21 +206,60 @@
     var frame = element('div', null, 'post-img');
     var body = element('div', null, 'post-body');
     var featured = image(item.featuredImageUrl, item.featuredImageAlt || item.title);
-    if (featured) frame.append(featured);
-    else frame.append(element('div', 'Church gallery', 'placeholder'));
+    if (featured) {
+      featured.classList.remove('cms-photo');
+      frame.append(featured);
+    } else {
+      frame.append(element('div', 'Church gallery', 'placeholder'));
+    }
     var tags = element('div', null, 'post-tags');
-    if (item.category) tags.append(element('span', item.category, 'chip-tag'));
+    blogLabels(item).forEach(function (label) { tags.append(element('span', label, 'chip-tag')); });
     var meta = element('div', null, 'post-meta');
-    [date(item.publishedAt), item.author].filter(Boolean).forEach(function (value) {
-      meta.append(element('span', value));
-    });
+    var publishedDate = date(item.publishedAt || item.createdAt || item.uploadedAt || item.published_at || item.created_at);
+    if (publishedDate) meta.append(blogMetaItem('i-calendar', publishedDate));
+    if (item.author) meta.append(blogMetaItem('i-user', item.author));
     var footer = element('div', null, 'post-footer');
-    footer.append(meta, link('Read article →', 'blog-post.html?slug=' + encodeURIComponent(item.slug), 'post-read'));
+    var readButton = element('button', 'Read article ', 'post-read');
+    readButton.type = 'button';
+    readButton.setAttribute('data-post-open', '');
+    var arrow = element('span', '→');
+    arrow.setAttribute('aria-hidden', 'true');
+    readButton.append(arrow);
+    footer.append(meta, readButton);
+    var articleTemplate = document.createElement('template');
+    articleTemplate.className = 'post-full-content';
+    if (typeof item.content === 'string' && item.content.trim()) {
+      var articleBody = element('div', null, 'cms-copy');
+      if (window.FhgmContent) FhgmContent.render(articleBody, item.content, item.contentFormat);
+      else articleBody.textContent = item.content;
+      articleTemplate.content.append(articleBody);
+    } else if (item.slug) {
+      articleTemplate.dataset.contentUrl = API + 'blog/' + encodeURIComponent(item.slug) + '?page=1';
+    } else if (item.excerpt) {
+      articleTemplate.content.append(element('p', item.excerpt));
+    }
     body.append(tags, element('h2', item.title, 'post-title'),
-      element('p', item.excerpt, 'post-excerpt'), footer);
+      element('p', item.excerpt, 'post-excerpt'), footer, articleTemplate);
     node.append(frame);
     node.append(body);
     return node;
+  }
+  function blogMetaItem(iconId, text) {
+    var item = element('span');
+    var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', '16');
+    svg.setAttribute('height', '16');
+    svg.setAttribute('aria-hidden', 'true');
+    var use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+    use.setAttribute('href', 'icons.svg#' + iconId);
+    svg.append(use);
+    item.append(svg, document.createTextNode(String(text)));
+    return item;
+  }
+  function articleMetaItem(iconId, text) {
+    var item = blogMetaItem(iconId, text);
+    item.classList.add('content-dialog-meta-item');
+    return item;
   }
   function eventCard(item) {
     var node = element('article', null, 'event-card');
@@ -317,17 +369,37 @@
     if (kind === 'post') {
       addFeaturedImageFallbacks([data]);
       document.getElementById('cmsTitle').textContent = data.title;
-      document.getElementById('cmsDescription').textContent = data.excerpt || '';
+      var description = document.getElementById('cmsDescription');
+      description.textContent = data.excerpt || '';
+      description.hidden = !description.textContent;
       document.title = (data.seoTitle || data.title) + ' | For His Grace Ministries';
       document.querySelector('meta[name="description"]').content = data.seoDescription || data.excerpt || '';
       document.querySelector('link[rel="canonical"]').href = window.location.origin + '/blog-post.html?slug=' + encodeURIComponent(slug);
+      var articleDialog = document.getElementById('postDialog');
+      var articleImage = document.getElementById('postDialogImage');
+      var articleLabels = document.getElementById('postDialogLabels');
+      var articleMeta = document.getElementById('postDialogMeta');
+      if (!articleDialog || !articleImage || !articleLabels || !articleMeta) throw new Error('Article reader is unavailable');
+      articleImage.replaceChildren();
+      var featured = image(data.featuredImageUrl, data.featuredImageAlt || data.title);
+      articleImage.hidden = !featured;
+      if (featured) {
+        featured.classList.remove('cms-photo');
+        articleImage.append(featured);
+      }
+      articleLabels.replaceChildren();
+      blogLabels(data).forEach(function (label) {
+        articleLabels.append(element('span', label, 'content-dialog-label'));
+      });
+      articleMeta.replaceChildren();
+      var publishedDate = date(data.publishedAt || data.createdAt || data.uploadedAt || data.published_at || data.created_at);
+      if (publishedDate) articleMeta.append(articleMetaItem('i-calendar', publishedDate));
+      if (data.author) articleMeta.append(articleMetaItem('i-user', 'By ' + data.author));
       var articleBody = element('div', null, 'cms-copy');
       if (window.FhgmContent) FhgmContent.render(articleBody, data.content, data.contentFormat); else articleBody.textContent = data.content || '';
-      var featured = image(data.featuredImageUrl, data.featuredImageAlt || data.title);
-      if (featured) content.append(featured);
-      content.append(element('p', [data.author, date(data.publishedAt)].filter(Boolean).join(' · '), 'cms-meta'),
-        articleBody, link('← All articles', 'blog.html', 'link-gold'));
+      content.append(articleBody);
       status.textContent = '';
+      articleDialog.showModal();
       return;
     }
     if (!Array.isArray(data.items)) throw new Error('Invalid content response');

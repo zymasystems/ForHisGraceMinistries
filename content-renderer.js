@@ -16,7 +16,11 @@
   }
   function render(root, text, format) {
     root.replaceChildren();
-    if (format !== 'Markdown') { root.textContent = text || ''; return; }
+    const formatName = typeof format === 'string' ? format.trim().toLowerCase() : '';
+    if (formatName !== 'markdown' && formatName !== 'formatted text (markdown)') {
+      root.textContent = text || '';
+      return;
+    }
     let list = null;
     for (const line of (text || '').split(/\r?\n/)) {
       const heading = /^(#{1,3})\s+(.+)$/.exec(line), bullet = /^[-*]\s+(.+)$/.exec(line);

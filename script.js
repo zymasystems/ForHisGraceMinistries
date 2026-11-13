@@ -471,40 +471,104 @@
   var blogGrid = document.getElementById('blogGrid');
   var postDialog = document.getElementById('postDialog');
   var postDialogTitle = document.getElementById('postDialogTitle');
+  var postDialogExcerpt = document.getElementById('postDialogExcerpt');
+  var postDialogLabels = document.getElementById('postDialogLabels');
   var postDialogMeta = document.getElementById('postDialogMeta');
   var postDialogArticle = document.getElementById('postDialogArticle');
   var postDialogImage = document.getElementById('postDialogImage');
   var lastPostTrigger = null;
+  var postDetails = new WeakMap();
+
+  function postLabels(item) {
+    var labels = Array.isArray(item.tags) ? item.tags.slice()
+      : typeof item.tags === 'string' ? item.tags.split(',') : [];
+    if (item.category) labels.unshift(item.category);
+    var seen = new Set();
+    return labels.filter(function (label) {
+      if (typeof label !== 'string' || !label.trim()) return false;
+      var key = label.trim().toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).map(function (label) { return label.trim(); });
+  }
+
+  function postDate(value) {
+    var date = new Date(value);
+    return Number.isNaN(date.getTime()) ? '' : new Intl.DateTimeFormat('en-ZA', {
+      dateStyle: 'medium', timeZone: 'Africa/Johannesburg'
+    }).format(date);
+  }
 
   if (
     blogGrid &&
     postDialog &&
     postDialogTitle &&
+    postDialogExcerpt &&
+    postDialogLabels &&
     postDialogMeta &&
     postDialogArticle &&
     postDialogImage
   ) {
     bindContentDialog(postDialog);
 
-    document.addEventListener('click', function (event) {
-      var trigger = event.target.closest('[data-post-open]');
-      var card = trigger && trigger.closest('.post-card');
-
-      if (!card) return;
-
+    function showPostDialog(trigger, card) {
       var title = card.querySelector('.post-title');
       var metadata = card.querySelectorAll('.post-meta span');
       var tags = card.querySelectorAll('.post-tags .chip-tag');
       var image = card.querySelector('.post-img img');
       var article = card.querySelector('.post-full-content');
       var excerpt = card.querySelector('.post-excerpt');
+      var detail = article && postDetails.get(article);
 
       postDialogTitle.textContent = title ? title.textContent.trim() : 'Blog article';
+      postDialogExcerpt.textContent = excerpt ? excerpt.textContent.trim() : '';
+      postDialogExcerpt.hidden = !postDialogExcerpt.textContent;
+      postDialogLabels.replaceChildren();
       postDialogMeta.replaceChildren();
 
-      Array.from(tags).concat(Array.from(metadata)).forEach(function (value) {
+      var labels = detail ? postLabels(detail) : Array.from(tags).map(function (tag) {
+        return tag.textContent.trim();
+      });
+      labels.forEach(function (value) {
         var item = document.createElement('span');
-        item.textContent = value.textContent.trim();
+        item.className = 'content-dialog-label';
+        item.textContent = value;
+        postDialogLabels.appendChild(item);
+      });
+
+      var metadataItems = Array.from(metadata).map(function (value) {
+        var icon = value.querySelector('use');
+        var href = icon ? icon.getAttribute('href') || '' : '';
+        return {
+          icon: href.indexOf('i-user') !== -1 ? 'i-user' : 'i-calendar',
+          text: value.textContent.trim()
+        };
+      });
+      if (detail) {
+        var dateValue = detail.publishedAt || detail.published_at ||
+          detail.createdAt || detail.created_at || detail.uploadedAt;
+        var formattedDate = dateValue ? postDate(dateValue) : '';
+        var publishedDate = metadataItems.find(function (item) { return item.icon === 'i-calendar'; });
+        if (formattedDate && publishedDate) publishedDate.text = formattedDate;
+        else if (formattedDate) metadataItems.unshift({icon:'i-calendar', text:formattedDate});
+      }
+      if (detail && detail.author) {
+        var author = metadataItems.find(function (item) { return item.icon === 'i-user'; });
+        if (author) author.text = detail.author;
+        else metadataItems.push({icon:'i-user', text:detail.author});
+      }
+      metadataItems.forEach(function (value) {
+        var item = document.createElement('span');
+        item.className = 'content-dialog-meta-item';
+        var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('width', '16');
+        svg.setAttribute('height', '16');
+        svg.setAttribute('aria-hidden', 'true');
+        var use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+        use.setAttribute('href', 'icons.svg#' + value.icon);
+        svg.appendChild(use);
+        item.append(svg, document.createTextNode(value.icon === 'i-user' ? 'By ' + value.text : value.text));
         postDialogMeta.appendChild(item);
       });
 
@@ -528,6 +592,59 @@
 
       lastPostTrigger = trigger;
       postDialog.showModal();
+    }
+
+    async function loadPostDetails(trigger, card, article) {
+      var postStatus = document.getElementById('cmsStatus');
+      var previousStatus = postStatus ? postStatus.textContent : '';
+      if (previousStatus === 'The full article could not be loaded. Please try again.') previousStatus = '';
+      if (postStatus) postStatus.textContent = 'Loading article…';
+      trigger.disabled = true;
+      trigger.setAttribute('aria-busy', 'true');
+      var controller = new AbortController();
+      var timer = window.setTimeout(function () { controller.abort(); }, 60000);
+      try {
+        var url = new URL(article.dataset.contentUrl, window.location.href);
+        if (url.origin !== 'https://admin.hisgraceministries.co.za' ||
+            url.pathname.indexOf('/api/public/blog/') !== 0) {
+          throw new Error('Invalid article URL');
+        }
+        var response = await fetch(url.href, {
+          credentials: 'omit', cache: 'no-store', signal: controller.signal
+        });
+        if (!response.ok) throw new Error('Article request failed (' + response.status + ')');
+        var detail = await response.json();
+        if (!detail || typeof detail.content !== 'string') throw new Error('Invalid article response');
+        var body = document.createElement('div');
+        body.className = 'cms-copy';
+        if (window.FhgmContent) FhgmContent.render(body, detail.content, detail.contentFormat);
+        else body.textContent = detail.content;
+        article.content.replaceChildren(body);
+        article.dataset.contentLoaded = 'true';
+        postDetails.set(article, detail);
+        if (postStatus) postStatus.textContent = previousStatus;
+        showPostDialog(trigger, card);
+      } catch (error) {
+        console.error('Could not load the uploaded blog article.', error);
+        if (postStatus) postStatus.textContent = 'The full article could not be loaded. Please try again.';
+      } finally {
+        window.clearTimeout(timer);
+        trigger.disabled = false;
+        trigger.removeAttribute('aria-busy');
+      }
+    }
+
+    document.addEventListener('click', function (event) {
+      var trigger = event.target.closest('[data-post-open]');
+      var card = trigger && trigger.closest('.post-card');
+      if (!card) return;
+      var article = card.querySelector('.post-full-content');
+      if (article && article.dataset.contentUrl && article.dataset.contentLoaded !== 'true') {
+        event.preventDefault();
+        loadPostDetails(trigger, card, article);
+        return;
+      }
+      showPostDialog(trigger, card);
     });
 
     postDialog.addEventListener('close', function () {

@@ -76,9 +76,19 @@
     <button class="announce-trigger" id="announceTrigger" type="button" aria-label="View announcement" hidden>!</button>
     <main id="main" data-cms="post">
       <section class="section"><div class="wrap">
-        <header class="sec-head"><h1 id="cmsTitle">Church Blog</h1><p id="cmsDescription">Read the latest from For His Grace Ministries.</p></header>
         <p id="cmsStatus" role="status" aria-live="polite">Loading content…</p>
-        <div id="cmsContent" class="cms-article"></div>
+        <dialog class="content-dialog post-dialog" id="postDialog" aria-labelledby="cmsTitle">
+          <a class="content-dialog-close" href="blog.html" aria-label="Back to articles">×</a>
+          <div class="content-dialog-image" id="postDialogImage" hidden></div>
+          <div class="content-dialog-body">
+            <p class="eyebrow">From the Heart</p>
+            <h1 id="cmsTitle">Church Blog</h1>
+            <p id="cmsDescription" class="post-dialog-excerpt"></p>
+            <div class="content-dialog-labels" id="postDialogLabels"></div>
+            <div class="content-dialog-meta" id="postDialogMeta"></div>
+            <div id="cmsContent" class="content-dialog-article"></div>
+          </div>
+        </dialog>
         <nav id="cmsPagination" class="cms-pagination" aria-label="Content pages"></nav>
         <noscript><p>Please enable JavaScript to view published church content.</p></noscript>
       </div></section>

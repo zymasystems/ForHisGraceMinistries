@@ -6,9 +6,14 @@ const assert = require('node:assert/strict');
   const page = await browser.newPage();
   let payload, responseForRequest = null, responseStatus = 200, requests = [];
   let standaloneResponse = {total:0,items:[]}, standaloneStatus = 200;
+  let popupResponse = {serverTime:'2026-11-06T12:00:00Z',items:[]}, popupRequests = 0;
   await page.route('https://admin.hisgraceministries.co.za/api/public/**', async route => {
     requests.push(route.request().url());
     assert.equal(route.request().headers().cookie, undefined);
+    if (route.request().url().includes('/api/public/popups/active')) {
+      popupRequests++;
+      await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(popupResponse)}); return;
+    }
     if (route.request().url().includes('/gallery/images?')) {
       const body = typeof standaloneResponse === 'function' ? standaloneResponse(route.request().url()) : standaloneResponse;
       await route.fulfill({status:standaloneStatus,contentType:'application/json',body:JSON.stringify(body)}); return;
@@ -238,6 +243,38 @@ const assert = require('node:assert/strict');
   await page.clock.fastForward(14 * 24 * 60 * 60 * 1000);
   assert.equal(await page.locator('#blogGrid .post-card').count(), 0);
   assert.match(await page.locator('#cmsContent').textContent(), /Two week article/);
+
+  popupResponse = {serverTime:'2026-11-06T12:00:00Z',items:[{
+    id:'notice-1',version:1,title:'Service update',message:'Join us for the upcoming service.',
+    buttonText:'View events',buttonUrl:'https://hisgraceministries.co.za/events.html',
+    startsAt:'2026-11-06T10:00:00Z',endsAt:'2026-11-07T10:00:00Z'
+  }]};
+  let popupResponsePromise = page.waitForResponse(response => response.url().includes('/api/public/popups/active'));
+  await page.goto(base + '/index.html');
+  await popupResponsePromise;
+  await page.locator('#announcePopup[open]').waitFor();
+  assert.equal(await page.locator('#popupTitle').textContent(), 'Service update');
+  assert.equal(await page.locator('#popupBody').textContent(), 'Join us for the upcoming service.');
+  assert.equal(await page.locator('#popupLink').isVisible(), true);
+  assert.equal(await page.locator('#popupLink').getAttribute('href'), 'https://hisgraceministries.co.za/events.html');
+  await page.locator('#popupClose').click();
+  assert.equal(await page.evaluate(() => sessionStorage.getItem('fhgm-popup-notice-1-1')), 'shown');
+
+  await visit('blog.html', {total:0,items:[]});
+  assert.equal(popupRequests, 1);
+  popupResponsePromise = page.waitForResponse(response => response.url().includes('/api/public/popups/active'));
+  await page.goto(base + '/index.html');
+  await popupResponsePromise;
+  assert.equal(await page.locator('#announcePopup').evaluate(node => node.open), false);
+
+  popupResponse = {serverTime:'2026-11-06T12:00:00Z',items:[{
+    id:'notice-1',version:2,title:'Updated service update',message:'A changed notice appears again.',
+    buttonText:'',buttonUrl:'',startsAt:'2026-11-06T10:00:00Z',endsAt:'2026-11-07T10:00:00Z'
+  }]};
+  await page.goto(base + '/index.html');
+  await page.locator('#announcePopup[open]').waitFor();
+  assert.equal(await page.locator('#popupTitle').textContent(), 'Updated service update');
+  assert.equal(await page.locator('#popupLink').isHidden(), true);
   await browser.close();
-  console.log('PASS: recent/archive feeds and timed transitions, all-page loading, article detail, SAST dates, album photos, safe rendering, errors/retry, missing content, mobile width and page structure');
+  console.log('PASS: recent/archive feeds and timed transitions, homepage announcement scheduling/session behavior, all-page loading, article detail, SAST dates, album photos, safe rendering, errors/retry, missing content, mobile width and page structure');
 })().catch(error => { console.error(error); process.exit(1); });

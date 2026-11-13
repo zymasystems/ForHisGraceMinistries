@@ -2668,6 +2668,7 @@ textarea {
   color: #c9cdc7;
   font-size: 15px;
   line-height: 1.7;
+  white-space: pre-line;
 }
 .announce-popup-body p {
   margin: 0 0 14px;
@@ -2677,17 +2678,42 @@ textarea {
 }
 .announce-popup-actions {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
   gap: 10px;
   padding: 14px 24px 22px;
   border-top: 1px solid var(--line);
+}
+.announce-popup-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--gold);
+  border-radius: var(--r-sm);
+  background: var(--gold);
+  color: var(--bg);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.announce-popup-link:hover {
+  border-color: var(--gold-hover);
+  background: var(--gold-hover);
+  color: var(--bg);
+}
+.announce-popup-link[hidden] {
+  display: none;
 }
 .announce-popup-close {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  min-width: 76px;
+  min-height: 40px;
+  padding: 0 14px;
   border: 1px solid var(--gold-line);
   background: transparent;
   color: var(--text);

@@ -302,32 +302,125 @@
 
   /* ===== Popup announcements ============================================ */
   var announcePopup = document.getElementById('announcePopup');
-  var announceTrigger = document.getElementById('announceTrigger');
   var popupClose = document.getElementById('popupClose');
+  var announcementMemory = new Set();
+  var announcementFocus = null;
+  var announcementExpiryTimer = null;
+  var announcementKey = function (item) { return 'fhgm-popup-' + item.id + '-' + item.version; };
 
-  function openAnnouncement() {
-    if (announcePopup) announcePopup.showModal();
-    if (announceTrigger) announceTrigger.setAttribute('hidden', '');
+  function announcementSeen(item) {
+    var key = announcementKey(item);
+    if (announcementMemory.has(key)) return true;
+    try { return window.sessionStorage.getItem(key) === 'shown'; }
+    catch (error) {
+      console.warn('Could not read the popup session state.', error);
+      return false;
+    }
+  }
+
+  function markAnnouncementSeen(item) {
+    var key = announcementKey(item);
+    announcementMemory.add(key);
+    try { window.sessionStorage.setItem(key, 'shown'); }
+    catch (error) { console.warn('Could not save the popup session state.', error); }
+  }
+
+  function safeAnnouncementUrl(value) {
+    if (typeof value !== 'string' || !value.trim()) return null;
+    try {
+      var url = new URL(value.trim(), window.location.href);
+      if (url.protocol === 'https:') return url.href;
+      if ((url.protocol === 'http:' || url.protocol === 'file:') &&
+          url.protocol === window.location.protocol && url.origin === window.location.origin) return url.href;
+      return null;
+    } catch (error) {
+      return null;
+    }
   }
 
   function closeAnnouncement() {
-    if (announcePopup) announcePopup.close();
+    if (announcePopup && announcePopup.open) announcePopup.close();
   }
 
-  if (announceTrigger && announcePopup) {
-    announceTrigger.addEventListener('click', openAnnouncement);
-  }
-  if (popupClose && announcePopup) {
+  async function loadHomeAnnouncement() {
+    var popupTitle = document.getElementById('popupTitle');
+    var popupMeta = document.getElementById('popupMeta');
+    var popupBody = document.getElementById('popupBody');
+    var popupLink = document.getElementById('popupLink');
+    if (!document.querySelector('[data-home-page]') ||
+        !announcePopup || !popupClose || !popupTitle || !popupMeta || !popupBody || !popupLink) return;
+
     popupClose.addEventListener('click', closeAnnouncement);
-  }
-  if (announcePopup) {
     announcePopup.addEventListener('click', function (event) {
       if (event.target === announcePopup) closeAnnouncement();
     });
-    document.addEventListener('keydown', function (event) {
-      if (event.key === 'Escape' && announcePopup.open) closeAnnouncement();
+    announcePopup.addEventListener('cancel', function (event) {
+      event.preventDefault();
+      closeAnnouncement();
     });
+    announcePopup.addEventListener('close', function () {
+      window.clearTimeout(announcementExpiryTimer);
+      announcementExpiryTimer = null;
+      if (announcementFocus && announcementFocus.isConnected) announcementFocus.focus();
+      announcementFocus = null;
+    });
+
+    var controller = new AbortController();
+    var timeout = window.setTimeout(function () { controller.abort(); }, 10000);
+    try {
+      var response = await fetch(
+        'https://admin.hisgraceministries.co.za/api/public/popups/active',
+        {credentials:'omit', cache:'no-store', signal:controller.signal}
+      );
+      if (!response.ok) throw new Error('Public announcement request failed (' + response.status + ')');
+      var data = await response.json();
+      if (!data || !Array.isArray(data.items)) throw new Error('Invalid public announcement response');
+      var serverTime = Date.parse(data.serverTime);
+      if (!Number.isFinite(serverTime)) throw new Error('Invalid public announcement time');
+      var now = Date.now() + (serverTime - Date.now());
+      var item = data.items.find(function (candidate) {
+        if (!candidate || typeof candidate.id !== 'string' ||
+            !Number.isFinite(Number(candidate.version)) ||
+            typeof candidate.title !== 'string' || !candidate.title.trim() ||
+            typeof candidate.message !== 'string' || !candidate.message.trim()) {
+          console.warn('Skipping a malformed public announcement.');
+          return false;
+        }
+        var startsAt = Date.parse(candidate.startsAt);
+        var endsAt = Date.parse(candidate.endsAt);
+        return Number.isFinite(startsAt) && Number.isFinite(endsAt) &&
+          startsAt <= now && endsAt > now && !announcementSeen(candidate);
+      });
+      if (!item) return;
+
+      popupTitle.textContent = item.title;
+      popupMeta.textContent = 'For His Grace Ministries';
+      popupBody.textContent = item.message;
+      var buttonUrl = safeAnnouncementUrl(item.buttonUrl);
+      popupLink.hidden = !buttonUrl;
+      popupLink.removeAttribute('href');
+      if (item.buttonUrl && !buttonUrl) console.warn('Ignoring an unsafe announcement button URL.');
+      if (buttonUrl) {
+        popupLink.href = buttonUrl;
+        popupLink.textContent = typeof item.buttonText === 'string' && item.buttonText.trim()
+          ? item.buttonText.trim() : 'Learn more';
+      }
+
+      announcementFocus = document.activeElement;
+      announcePopup.showModal();
+      markAnnouncementSeen(item);
+      announcementExpiryTimer = window.setTimeout(
+        closeAnnouncement,
+        Math.min(Date.parse(item.endsAt) - now, 2147483647)
+      );
+    } catch (error) {
+      console.warn('Could not load public announcements.', error);
+    } finally {
+      window.clearTimeout(timeout);
+    }
   }
+
+  loadHomeAnnouncement();
 
   /* ===== Admin-ready data hooks ========================================= */
   document.querySelectorAll('[data-admin-ready]').forEach(function (el) {

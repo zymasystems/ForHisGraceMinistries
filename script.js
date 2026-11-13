@@ -710,7 +710,8 @@
         if (!detail || typeof detail.content !== 'string') throw new Error('Invalid article response');
         var body = document.createElement('div');
         body.className = 'cms-copy';
-        if (window.FhgmContent) FhgmContent.render(body, detail.content, detail.contentFormat);
+        var cardTitle = card.querySelector('.post-title');
+        if (window.FhgmContent) FhgmContent.render(body, detail.content, detail.contentFormat, detail.title || (cardTitle && cardTitle.textContent));
         else body.textContent = detail.content;
         article.content.replaceChildren(body);
         article.dataset.contentLoaded = 'true';

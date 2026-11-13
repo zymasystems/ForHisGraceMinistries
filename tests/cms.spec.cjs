@@ -46,7 +46,7 @@ const assert = require('node:assert/strict');
     ? {total:13,items:Array.from({length:12},(_,i)=>({title:'Archive '+i,slug:'archive-'+i,publishedAt:'2026-10-01T12:00:00Z'}))}
     : url.includes('/blog/faith%20%26%20hope?page=1')
       ? {
-        title:'Uploaded article',content:'## Full story\n\nThe complete uploaded article.',
+        title:'Uploaded article',content:'# Uploaded article\n\n## Full story\n\nThe complete uploaded article.',
         contentFormat:'Markdown',category:'Teaching',tags:'Faith, Hope',author:'Staff'
       }
       : payload;
@@ -75,20 +75,23 @@ const assert = require('node:assert/strict');
   assert.match(await page.locator('#postDialogMeta').textContent(), /2026.*By Staff/);
   assert.equal(await page.locator('#postDialogMeta .content-dialog-meta-item').count(), 2);
   assert.match(await page.locator('#postDialogArticle').textContent(), /The complete uploaded article/);
+  assert.equal(await page.locator('#postDialogArticle h2').count(), 0);
   assert.equal(await page.locator('#postDialogArticle h3').textContent(), 'Full story');
   assert.ok(requests.some(url => /blog\/faith%20%26%20hope\?page=1/.test(url)));
   await page.locator('#postDialog [data-dialog-close]').click();
   responseForRequest = null;
   await visit('blog-post.html?slug=faith', {
-    title:'Faith',excerpt:'A subtitle for the article.',content:'First **paragraph**\n\nSecond paragraph',contentFormat:'PlainText',
+    title:'Faith',excerpt:'A subtitle for the article.',content:'Faith\n\nFirst **paragraph**\n\nSecond paragraph',contentFormat:'PlainText',
     featuredImageUrl:'',category:'Reflection',tags:'Faith, Hope',author:'Staff',publishedAt:'2026-11-06T12:00:00Z'
   });
+  assert.equal(await page.title(), 'Faith | For His Grace Ministries');
   assert.equal(await page.locator('#postDialog').evaluate(node => node.open), true);
   assert.equal(await page.locator('#cmsDescription').textContent(), 'A subtitle for the article.');
   assert.equal(await page.locator('#cmsDescription').isVisible(), true);
   assert.equal(await page.locator('#postDialogLabels').textContent(), 'ReflectionFaithHope');
   assert.match(await page.locator('#postDialogMeta').textContent(), /2026.*By Staff/);
   assert.match(await page.locator('.cms-copy').textContent(), /Second paragraph/);
+  assert.doesNotMatch(await page.locator('.cms-copy').textContent(), /^Faith/);
   assert.equal(await page.locator('.cms-copy strong').count(), 0);
   assert.match(await page.locator('#postDialogMeta').textContent(), /Reflection.*Faith.*Hope/);
   assert.equal(await page.locator('#postDialogImage img').count(), 1);
@@ -226,7 +229,8 @@ const assert = require('node:assert/strict');
   assert.equal(await page.locator('#eventsEmpty').isHidden(), false);
   await visit('gallery.html', {total:0,items:[]});
   assert.equal(await page.locator('#albumsSection').isHidden(), true);
-  await visit('blog-post.html?slug=formatted', {title:'Formatted',content:'## A heading\n**Bold** and *gentle*\n<script>alert(1)</script>\n[Bad](javascript:alert(1))',contentFormat:'Formatted text (Markdown)',featuredImageUrl:'https://example.org/cover.jpg'});
+  await visit('blog-post.html?slug=formatted', {title:'Formatted',content:'# Formatted\n\n## A heading\n**Bold** and *gentle*\n<script>alert(1)</script>\n[Bad](javascript:alert(1))',contentFormat:'Formatted text (Markdown)',featuredImageUrl:'https://example.org/cover.jpg'});
+  assert.equal(await page.locator('#cmsContent h2').count(), 0);
   assert.equal(await page.locator('#cmsContent h3').textContent(), 'A heading');
   assert.equal(await page.locator('#cmsContent strong').textContent(), 'Bold');
   assert.equal(await page.locator('#cmsContent script').count(), 0);

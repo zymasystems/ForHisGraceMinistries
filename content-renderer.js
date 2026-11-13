@@ -1,6 +1,22 @@
 /* Deliberately small Markdown subset. Never interprets raw HTML or image markup. */
 (function () {
   'use strict';
+  function withoutDuplicateTitle(text, title) {
+    if (typeof text !== 'string' || typeof title !== 'string' || !title.trim()) return text;
+    const lines = text.split(/\r?\n/);
+    const firstLine = lines.findIndex(line => line.trim());
+    if (firstLine === -1) return text;
+    const heading = /^#{1,6}\s+(.+)$/.exec(lines[firstLine].trim());
+    const candidate = (heading ? heading[1] : lines[firstLine])
+      .replace(/\*\*(.+?)\*\*|__(.+?)__/g, '$1$2')
+      .replace(/\*(.+?)\*|_(.+?)_/g, '$1$2')
+      .replace(/`([^`]+)`/g, '$1')
+      .trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+    if (candidate !== title.trim().replace(/\s+/g, ' ').toLocaleLowerCase()) return text;
+    lines.splice(firstLine, 1);
+    while (lines.length && !lines[0].trim()) lines.shift();
+    return lines.join('\n');
+  }
   function inline(parent, text) {
     const pattern = /(\*\*([^*\n]+)\*\*|\*([^*\n]+)\*|\[([^\]\n]+)\]\((https:\/\/[^\s)]+)\))/g;
     let match, start = 0;
@@ -14,8 +30,9 @@
     }
     parent.append(document.createTextNode(text.slice(start)));
   }
-  function render(root, text, format) {
+  function render(root, text, format, title) {
     root.replaceChildren();
+    text = withoutDuplicateTitle(text || '', title);
     const formatName = typeof format === 'string' ? format.trim().toLowerCase() : '';
     if (formatName !== 'markdown' && formatName !== 'formatted text (markdown)') {
       root.textContent = text || '';

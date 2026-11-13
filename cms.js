@@ -230,7 +230,7 @@
     articleTemplate.className = 'post-full-content';
     if (typeof item.content === 'string' && item.content.trim()) {
       var articleBody = element('div', null, 'cms-copy');
-      if (window.FhgmContent) FhgmContent.render(articleBody, item.content, item.contentFormat);
+      if (window.FhgmContent) FhgmContent.render(articleBody, item.content, item.contentFormat, item.title);
       else articleBody.textContent = item.content;
       articleTemplate.content.append(articleBody);
     } else if (item.slug) {
@@ -372,7 +372,10 @@
       var description = document.getElementById('cmsDescription');
       description.textContent = data.excerpt || '';
       description.hidden = !description.textContent;
-      document.title = (data.seoTitle || data.title) + ' | For His Grace Ministries';
+      var pageTitle = (data.seoTitle || data.title || 'Blog article').trim();
+      document.title = /(?:\s\|\s|^)For His Grace Ministries$/i.test(pageTitle)
+        ? pageTitle
+        : pageTitle + ' | For His Grace Ministries';
       document.querySelector('meta[name="description"]').content = data.seoDescription || data.excerpt || '';
       document.querySelector('link[rel="canonical"]').href = window.location.origin + '/blog-post.html?slug=' + encodeURIComponent(slug);
       var articleDialog = document.getElementById('postDialog');
@@ -396,7 +399,7 @@
       if (publishedDate) articleMeta.append(articleMetaItem('i-calendar', publishedDate));
       if (data.author) articleMeta.append(articleMetaItem('i-user', 'By ' + data.author));
       var articleBody = element('div', null, 'cms-copy');
-      if (window.FhgmContent) FhgmContent.render(articleBody, data.content, data.contentFormat); else articleBody.textContent = data.content || '';
+      if (window.FhgmContent) FhgmContent.render(articleBody, data.content, data.contentFormat, data.title); else articleBody.textContent = data.content || '';
       content.append(articleBody);
       status.textContent = '';
       articleDialog.showModal();

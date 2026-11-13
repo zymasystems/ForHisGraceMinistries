@@ -199,6 +199,8 @@ const assert = require('node:assert/strict');
   responseStatus = 200;
   await visit('gallery.html', {total:0,items:[]});
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  assert.equal(await page.locator('#cmsPagination').evaluate(node => getComputedStyle(node).position), 'static');
+  assert.equal(await page.locator('#nav').evaluate(node => getComputedStyle(node).position), 'absolute');
   const galleryRows = await page.evaluate(() => {
     const rows = new Map();
     document.querySelectorAll('#galGrid .gallery-photo:not([hidden])').forEach(card => {
